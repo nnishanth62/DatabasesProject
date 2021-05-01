@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Search Results</title>
+</head>
+<body>
+
+<style type="text/css">
+	table, th, td{
+		border: 1px solid black;
+	}
+</style>
+
+<table>
+	<th>Airline name</th>
+	<th>Flight no.</th>
+	<th>Departure Date</th>
+	<th>Departure Time</th>
+	<th>Arrival Date</th>
+	<th>Arrival Time</th>
+	<th>Departure Airport</th>
+	<th>Departure City</th>
+	<th>Arrival Airport</th>
+	<th>Arrival City</th>
+	<th>Price</th>
+
+{% for line in data %}
+	<% price = line['price'] if line['capacity']*.7 > line['tickets_sold'] else line['price']*1.2 %>
+	<tr>
+		<td>{{line['airline_name']}}</td>
+		<td>{{line['flight_num']}}</td>
+		<td>{{line['departure_date']}}</td>
+		<td>{{line['departure_time']}}</td>
+		<td>{{line['arrival_date']}}</td>
+		<td>{{line['arrival_time']}}</td>
+		<td>{{line['departure_airport_name']}}</td>
+		<td>{{line['city']}}</td>
+        <td>{{line['arrival_airport_name']}}</td>
+		<td>{{line['ar_port.city']}}</td>
+		<td>{{price}}</td>
+	</tr>
+{% endfor %}
+</table>
+<h1>Buy a flight:</h1>
+    <form action = "/CustPurchaseFlightAuth" method = "POST">
+		<input type = "text" required name = "flight_num" placeholder = "flight number" pattern = "{6}"/></br>
+        <input type = "text" required name = "airline_name" placeholder = "airline name" pattern = "{1,20}"/></br>
+        <input type = "date" required name = "departure_date" placeholder = "departure date"/>
+        <input type = "text" required name = "departure_time" placeholder = "departure time" pattern = "[0-23]{2}:[0-59]{2}:[0-59]{2}"/></br>
+		<select name ="debit_credit" required><option value="credit">credit</option><option value="debit">debit</option></select>
+        <input type = "text" required name = "card_no" placeholder = "card number" pattern = "[0-9]{16,19}"/></br>
+        <input type = "text" required name = "cardholder" placeholder = "billing name" pattern = "{1,30}"/>
+        <input type = "date" required name = "card_exp" placeholder = "card exp date"/></br>
+		<input type = "hidden" required name = "price" value = {{price}}>
+		<input type = "submit" value = Search /></br>
+    </form>
+<a href = "/CustHome"><button>Back to Home</button></a>
+
+
+</body>
+</html>

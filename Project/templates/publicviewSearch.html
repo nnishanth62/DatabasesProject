@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Search for flights</title>
+</head>
+<body>
+<h1>Search for future flights:</h1>
+    <form action = "/publicviewSearchAuth" method = "POST">
+        <input type = "date" name = "departure_date" placeholder = "departure date"/>
+        <input type = "date" name = "arrival_date" placeholder = "arrival date"/></br>
+        <input type = "text" name = "departure_city" placeholder = "departure city" pattern = "{1,20}"/>
+        <input type = "text" name = "arrival_city" placeholder = "arrival city" pattern = "{1,20}"/></br>
+        <input type = "text" name = "departure_airport" placeholder = "departure airport" pattern = "{1,20}"/>
+        <input type = "text" name = "arrival_airport" placeholder = "arrival airport" pattern = "{1,20}"/></br>
+        <input type = "submit" value = Search /></br>
+    </form>
+</body>
+</html>
