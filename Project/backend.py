@@ -335,7 +335,9 @@ def CustSearchForFlightsAuth():
 
 @app.route('/CustPurchaseFlightsAuth', methods=["GET", "POST"])
 def CustPurchaseFlightAuth():
-    get = "SELECT * from purchaseable_tickets where flight_num = '{}' and airline_name = '{}' and departure_time = {} and departure_date = {}".format(request.form['flight_num'], request.form['airline_name'], request.form['departure_time'], request.form['departure_date'])
+    get = "SELECT * from purchaseable_tickets where flight_num = '{}' and airline_name = '{}' " \
+          "and departure_time = {} and departure_date = {}" \
+          .format(request.form['flight_num'], request.form['airline_name'], request.form['departure_time'], request.form['departure_date'])
     cursor = conn.cursor()
     cursor.execute(get)
     flight = cursor.fetchone()
@@ -349,7 +351,84 @@ def CustPurchaseFlightAuth():
     cursor.close()
     return render_template('/CustHome', error=error)
 
+# BOOKING AGENT VIEWS
 
+@app.route('/CustHome')
+def BookingAgentHome():
+    return render_template("BookingAgentHome.html")
+
+
+@app.route('/BookingAgentViewFlights')
+def BookingAgentViewFlights():
+    date_time = datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S').split()
+    query = "SELECT * FROM flight, purchase, booking_agent, ticket WHERE flight.flight_num = ticket.flight_num" \
+            "AND ticket.ticket_id = purchase.ticket_id AND purchase.booking_agent_email = booking_agent.email" \
+            "AND booking_agent.email = '{}' " \
+            .format(session['email'], date_time[0], date_time[1])
+    cursor = conn.cursor()
+    cursor.execute(query)
+    data = cursor.fetchall()
+    cursor.close()
+    return render_template('BookingAgentViewFlights.html', data=data)
+
+
+@app.route('BookingAgentSearchForFlights')
+def BookingAgentSearchForFlights():
+    return render_template("BookingAgentSearchForFlights.html")
+
+
+@app.route('/BookingAgentSearchForFlightsAuth', methods=["GET", "POST"])
+def BookingAgentSearchForFlightsAuth():
+    date_time = datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S').split()
+    query = "SELECT * FROM flight, purchase, ticket WHERE purchase.customer_email = '{}'" \
+            "AND purchase.ticket_id = ticket.ticket_id AND ticket.flight_num = flight.flight_num".format(date_time[0], date_time[1])
+    query_addition = []
+    departure_airport = request.form['departure_airport']
+    arrival_airport = request.form['arrival_airport']
+    departure_date = request.form['departure_date']
+    arrival_date = request.form['arrival_date']
+    departure_city = request.form['departure_city']
+    arrival_city = request.form['arrival_city']
+    if departure_airport != '':
+        query_addition.append("departure_airport_name = '%s'" % departure_airport)
+    if arrival_airport != '':
+        query_addition.append("arrival_airport_name = '%s'" % arrival_airport)
+    if departure_date != '':
+        query_addition.append("departure_date = '%s'" % departure_date)
+    if arrival_date != '':
+        query_addition.append("arrival_date = '%s'" % arrival_date)
+    if departure_city != '':
+        query_addition.append("dep_port.city = '%s'" % departure_city)
+    if arrival_city != '':
+        query_addition.append("ar_port.city = '%s'" % arrival_city)
+    if query_addition:
+        query += " and " + " and ".join(query_addition)
+    cursor = conn.cursor()
+    cursor.execute(query)
+    data = cursor.fetchall()
+    cursor.close()
+    return render_template('/BookingAgentSearchForFlightsAuth.html', data=data)
+
+
+@app.route('/BookingAgentPurchaseAuth', methods=["GET", "POST"])
+def BookingAgentPurchaseAuth():
+    get = "SELECT * from purchaseable_tickets where flight_num = '{}' and airline_name = '{}' " \
+          "and departure_time = {} and departure_date = {}" \
+          .format(request.form['flight_num'], request.form['airline_name'], request.form['departure_time'], request.form['departure_date'])
+    
+    cursor = conn.cursor()
+    cursor.execute(get)
+    flight = cursor.fetchone()
+    if flight:
+        ins = "INSERT into purchases VALUES ('{}', '{}', '{}', '{}')" \
+              .format(request_form['ticket_id', request_form['customer_username'], request_form['booking_agent_id'], request_form['departure_date'])
+        cursor.execute(ins)
+        cursor.commit()
+        error = 'TICKET PURCHASED'
+    else:
+        error = 'TICKET FAILED TO PURCHASE: FLIGHT NOT FOUND'
+    cursor.close()
+    return render_template('/BookingAgentHome', error=error)"
 
 
 if __name__ == "__main__":
