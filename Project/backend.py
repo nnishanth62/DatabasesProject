@@ -16,6 +16,41 @@ conn = pymysql.connect(host='localhost',
 
 app.secret_key = secrets.token_urlsafe(16)
 
+def VerifyCustomer():
+    """
+    verifies if there is a customer with the current session's email
+    should be used to check whether the user is trying to inappropriately access a customer method
+    :return data: tuple of query result, can use "if VerifyCustomer():" to check whether or not it's empty.
+    EXAMPLE USE IN CUSTHOME() FUNCTION
+    """
+    verify = "SELECT * FROM customer WHERE email = %s"
+    cursor = conn.cursor()
+    cursor.execute(verify, session['email'])
+    data = cursor.fetchone()
+    cursor.close()
+    return data
+
+
+def VerifyAirlineStaff():
+    """
+    almost identical to VerifyCustomer(), should be used identically in airline staff functions
+    """
+    verify = "SELECT * FROM airline_staff WHERE email = %s"
+    cursor = conn.cursor()
+    cursor.execute(verify, session['email'])
+    data = cursor.fetchone()
+    cursor.close()
+    return data
+
+
+def VerifyBookingAgent():
+    verify = "SELECT * FROM booking_agent WHERE email = %s"
+    cursor = conn.cursor()
+    cursor.execute(verify, session['email'])
+    data = cursor.fetchone()
+    cursor.close()
+    return data
+
 
 def format_address(address):
     """
@@ -62,13 +97,13 @@ def loginAuthCustomer():
     email = request.form['email']
     password = md5(request.form['password'].encode()).hexdigest()
     cursor = conn.cursor()
-    query = "SELECT * FROM customer WHERE email = '{}' and cust_password = '{}'".format(email, password)
-    cursor.execute(query)
+    query = "SELECT * FROM customer WHERE email = %s and cust_password = %s"
+    cursor.execute(query, email, password)
     data = cursor.fetchone()
     cursor.close()
     if data:
         session['email'] = email
-        return redirect(url_for('home'))
+        return redirect(url_for('CustHome'))
     else:
         return render_template('loginCustomer.html', error="INVALID LOGIN!")
 
@@ -79,14 +114,13 @@ def loginAuthBookingAgent():
     password = md5(request.form['password'].encode()).hexdigest()
     booking_agent_id = request.form['booking_agent_id']
     cursor = conn.cursor()
-    query = "SELECT * FROM booking_agent WHERE email = '{}' and password = '{}' and booking_agent_id = '{}'".format(
-        email, password, booking_agent_id)
-    cursor.execute(query)
+    query = "SELECT * FROM booking_agent WHERE email = %s and password = %s and booking_agent_id = %s"
+    cursor.execute(query, email, password, booking_agent_id)
     data = cursor.fetchone()
     cursor.close()
     if data:
-        session['username'] = email
-        return redirect(url_for('home'))
+        session['email'] = email
+        return redirect(url_for('/BookingAgentHome'))
     else:
         return render_template('loginBookingAgent.html', error="INVALID LOGIN!")
 
@@ -97,16 +131,23 @@ def loginAuthAirlineStaff():
     password = md5(request.form['password'].encode()).hexdigest()
 
     cursor = conn.cursor()
-    query = "SELECT * FROM airline_staff WHERE email = '{}' and password = '{}'".format(email, password)
-    cursor.execute(query)
+    query = "SELECT * FROM airline_staff WHERE email = %s and password = %s"
+    cursor.execute(query, email, password)
     data = cursor.fetchone()
     cursor.close()
     if data:
-        session['username'] = email
-        return redirect(url_for('home'))
+        session['email'] = email
+        return redirect(url_for('AirlineStaffHome'))
     else:
         return render_template('loginAirlineStaff.html', error="INVALID LOGIN!")
 
+
+# LOGOUT METHODS
+
+@app.route('/logout')
+def logout():
+    session.pop(session['email'])
+    return redirect('/')
 
 # REGISTER METHODS
 @app.route('/register')
@@ -135,15 +176,15 @@ def registerAuth():
     username = request.form['username']
     password = md5(request.form['password'].encode()).hexdigest()
     cursor = conn.cursor()
-    query = "SELECT * FROM user WHERE username = '{}'".format(username, password)
-    cursor.execute(query)
+    query = "SELECT * FROM user WHERE username = %s"
+    cursor.execute(query, username, password)
     data = cursor.fetchone()
     if data:
         cursor.close()
         return render_template('register.html', error="USER ALREADY EXISTS")
     else:
-        ins = "INSERT INTO user VALUES('{}','{}')".format(username, password)
-        cursor.execute(ins)
+        ins = "INSERT INTO user VALUES(%s,%s)"
+        cursor.execute(ins, username, password)
         conn.commit()
         cursor.close()
         return render_template('index.html', error="Successfully registered, please log in to access your account!")
@@ -153,8 +194,8 @@ def registerAuth():
 def registerAuthCustomer():
     email = request.form['email']
     cursor = conn.cursor()
-    query = "SELECT * FROM customer WHERE email = '{}'".format(email)
-    cursor.execute(query)
+    query = "SELECT * FROM customer WHERE email = %s"
+    cursor.execute(query, email)
     data = cursor.fetchone()
     if data:
         cursor.close()
@@ -169,10 +210,9 @@ def registerAuthCustomer():
         passport_country = request.form['passport_country']
         passport_exp = request.form['passport_expiration']
         dob = request.form['DOB']
-        ins = "INSERT INTO customer values ('{}', '{}', '{}', '{}', '{}', {}, '{}', '{}', '{}', '{}', '{}', {}, {})".format(
-            email, first_name, last_name, cust_password, phone, address[0], address[1], address[2], address[3],
-            passport_no, passport_country, passport_exp, dob)
-        cursor.execute(ins)
+        ins = "INSERT INTO customer values (%s, %s, %s, %s, %s, %d, %s, %s, %s, %s, %s, %d, %d)"
+        cursor.execute(ins, email, first_name, last_name, cust_password, phone, address[0], address[1], address[2],
+                       address[3], passport_no, passport_country, passport_exp, dob)
         conn.commit()
         cursor.close()
         return render_template('index.html', error="Successfully registered, please log in to access your account!")
@@ -182,8 +222,8 @@ def registerAuthCustomer():
 def registerAuthAirlineStaff():
     username = request.form['username']
     cursor = conn.cursor()
-    query = "SELECT * FROM airline_staff WHERE username = '{}'".format(username)
-    cursor.execute(query)
+    query = "SELECT * FROM airline_staff WHERE username = %s"
+    cursor.execute(query, username)
     data = cursor.fetchone()
     if data:
         cursor.close()
@@ -194,9 +234,8 @@ def registerAuthAirlineStaff():
         password = md5(request.form['password'].encode()).hexdigest()
         dob = request.form['DOB']
         airline = request.form['airline_name']
-        ins = "INSERT INTO airline_staff VALUES('{}','{}','{}','{}',{},'{}')".format(username, fname, lname, password,
-                                                                                     dob, airline)
-        cursor.execute(ins)
+        ins = "INSERT INTO airline_staff VALUES(%s,%s,%s,%s,%d,%s)"
+        cursor.execute(ins, username, fname, lname, password, dob, airline)
         conn.commit()
         cursor.close()
         return render_template('index.html', error="Successfully registered, please log in to access your account!")
@@ -206,8 +245,8 @@ def registerAuthAirlineStaff():
 def registerAuthBookingAgent():
     email = request.form['email']
     cursor = conn.cursor()
-    query = "SELECT * FROM booking_agent WHERE email = '{}'".format(email)
-    cursor.execute(query)
+    query = "SELECT * FROM booking_agent WHERE email = %s"
+    cursor.execute(query, email)
     data = cursor.fetchone()
     if data:
         cursor.close()
@@ -216,8 +255,8 @@ def registerAuthBookingAgent():
         password = md5(request.form['password'].encode()).hexdigest()
         agent_id = request.form['booking_agent_id']
         commission = 0
-        ins = "INSERT INTO booking_agent VALUES('{}','{}','{}',{})".format(email, agent_id, password, commission)
-        cursor.execute(ins)
+        ins = "INSERT INTO booking_agent VALUES(%s,%s,%s,%d)"
+        cursor.execute(ins, email, agent_id, password, commission)
         conn.commit()
         cursor.close()
         return render_template('index.html', error="Successfully registered, please log in to access your account!")
@@ -242,12 +281,11 @@ def publicviewSearch():
     return render_template("publicviewSearch.html")
 
 
-@app.route('/publicviewSearchAuth', methods=["GET", "POST"])
+@app.route('/publicviewDisplay', methods=["GET", "POST"])
 def publicviewSearchAuth():
     date_time = datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S').split()
     query = "SELECT airline_name, flight_num, departure_date, departure_time, arrival_date, arrival_time, departure_airport_name, dep_port.city, arrival_airport_name, ar_port.city FROM flight, " \
-            "airport as dep_port, airport as ar_port WHERE dep_port.name = departure_airport_name and ar_port.name = arrival_airport_name and departure_date > '{}' and departure_time > '{}'".format(
-        date_time[0], date_time[1])
+            "airport as dep_port, airport as ar_port WHERE dep_port.name = departure_airport_name and ar_port.name = arrival_airport_name and departure_date > %s and departure_time > %s"
     query_addition = []
     departure_airport = request.form['departure_airport']
     arrival_airport = request.form['arrival_airport']
@@ -255,6 +293,7 @@ def publicviewSearchAuth():
     arrival_date = request.form['arrival_date']
     departure_city = request.form['departure_city']
     arrival_city = request.form['arrival_city']
+    ### NEED TO REWORK THIS SO WE USE EXECUTE() SQL INJECTION PROTECTION
     if departure_airport != '':
         query_addition.append("departure_airport_name = '%s'" % departure_airport)
     if arrival_airport != '':
@@ -270,27 +309,29 @@ def publicviewSearchAuth():
     if query_addition:
         query += " and " + " and ".join(query_addition)
     cursor = conn.cursor()
-    cursor.execute(query)
+    cursor.execute(query, date_time[0], date_time[1])
     data = cursor.fetchall()
     cursor.close()
-    return render_template('/publicviewDisplay.html', data=data)
+    return render_template('publicviewDisplay.html', data=data)
 
 
 # CUSTOMER VIEWS
 
 @app.route('/CustHome')
 def CustHome():
-    return render_template("CustHome.html")
+    if VerifyCustomer(): # if looking for their name has a result, send them to home
+        return render_template("CustHome.html")
+    else: # otherwise we just kill their session
+        redirect('/logout')
 
 
 @app.route('/CustViewMyFlights')
 def CustViewMyFlights():
     date_time = datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S').split()
     query = "SELECT * FROM flight, purchase, ticket WHERE flight.flight_status = 'upcoming' AND flight.flight_num =" \
-            " ticket.flight_num AND ticket.ticket_id = purchase.ticket_id AND purchase.customer_email = '{}' and departure_date > '{}' and departure_time > '{}'" \
-        .format(session['email'], date_time[0], date_time[1])
+            " ticket.flight_num AND ticket.ticket_id = purchase.ticket_id AND purchase.customer_email = %s and departure_date > %s and departure_time > %s"
     cursor = conn.cursor()
-    cursor.execute(query)
+    cursor.execute(query, session['email'], date_time[0], date_time[1])
     data = cursor.fetchall()
     cursor.close()
     return render_template('CustViewMyFlights.html', data=data)
@@ -300,11 +341,10 @@ def CustViewMyFlights():
 def CustSearchForFlights():
     return render_template("CustSearchForFlights.html")
 
-
-@app.route('/CustSearchForFlightsAuth', methods=["GET", "POST"])
-def CustSearchForFlightsAuth():
+@app.route('/CustSearchForFlightsDisplay', methods=["GET", "POST"])
+def CustSearchForFlightsDisplay():
     date_time = datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S').split()
-    query = "SELECT * FROM purchaseable_tickets WHERE departure_date > '{}' and departure_time > '{}'".format(date_time[0], date_time[1])
+    query = "SELECT * FROM purchaseable_tickets WHERE departure_date > %s and departure_time > %s"
     query_addition = []
     departure_airport = request.form['departure_airport']
     arrival_airport = request.form['arrival_airport']
@@ -312,6 +352,7 @@ def CustSearchForFlightsAuth():
     arrival_date = request.form['arrival_date']
     departure_city = request.form['departure_city']
     arrival_city = request.form['arrival_city']
+    # REWORK THIS FOR SQL INJECTION PROTECTION
     if departure_airport != '':
         query_addition.append("departure_airport_name = '%s'" % departure_airport)
     if arrival_airport != '':
@@ -327,33 +368,45 @@ def CustSearchForFlightsAuth():
     if query_addition:
         query += " and " + " and ".join(query_addition)
     cursor = conn.cursor()
-    cursor.execute(query)
+    cursor.execute(query, date_time[0], date_time[1])
     data = cursor.fetchall()
     cursor.close()
-    return render_template('/CustSearchForFlightsDisplay.html', data=data)
+    return render_template('CustSearchForFlightsDisplay.html', data=data)
 
 
 @app.route('/CustPurchaseFlightsAuth', methods=["GET", "POST"])
 def CustPurchaseFlightAuth():
-    get = "SELECT * from purchaseable_tickets where flight_num = '{}' and airline_name = '{}' " \
-          "and departure_time = {} and departure_date = {}" \
-          .format(request.form['flight_num'], request.form['airline_name'], request.form['departure_time'], request.form['departure_date'])
+    get = "SELECT * from purchaseable_tickets where flight_num = %s and airline_name = %s " \
+          "and departure_time = %d and departure_date = %d"
     cursor = conn.cursor()
-    cursor.execute(get)
+    cursor.execute(get, request.form['flight_num'], request.form['airline_name'], request.form['departure_time'],
+                   request.form['departure_date'])
     flight = cursor.fetchone()
     if flight:
-        ins = "INSERT into ticket VALUES ('{}', '{}', '{}', {}, '{}', '{}', '{}', '{}', {})".format(secrets.token_urlsafe(5), flight[1], flight[0], request.form['price'], session['email'], request.form['debit_credit'], request.form['card_no'], request.form['cardholder'], request.form['card_exp'])
-        cursor.execute(ins)
+        date_time = datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S').split()
+        ticket_id = secrets.token_urlsafe(5)
+        # first gonna create the ticket
+        ins_ticket = "INSERT into ticket VALUES (%s, %s, %s, %d, %s, %s, %s, %s, %d)"
+        cursor.execute(ins_ticket, ticket_id, flight[1], flight[0], request.form['price'], session['email'],
+                       request.form['debit_credit'], request.form['card_no'], request.form['cardholder'],
+                       request.form['card_exp'])
+        # then i wanna create the purchase record (NULL value is booking agent email)
+        ins_purchase = "INSERT into purchase VALUES (%s, %s, NULL, %s, %s)"
+        cursor.execute(ins_purchase, ticket_id, session['email'], date_time[0], date_time[1])
+        # then i wanna update the seats sold on the flight
+        update = "UPDATE flight SET tickets_sold = tickets_sold + 1 WHERE flight_num = %s"
+        cursor.execute(update, flight[0])
         cursor.commit()
-        error = 'TICKET PURCHASED'
+        return redirect('/CustHome')
     else:
         error = 'TICKET FAILED TO PURCHASE: FLIGHT NOT FOUND'
-    cursor.close()
-    return render_template('/CustHome', error=error)
+        cursor.close()
+        return render_template('/CustSearchForFlights', error=error)
+
 
 # BOOKING AGENT VIEWS
 
-@app.route('/CustHome')
+@app.route('/BookingAgentHome')
 def BookingAgentHome():
     return render_template("BookingAgentHome.html")
 
@@ -361,12 +414,12 @@ def BookingAgentHome():
 @app.route('/BookingAgentViewFlights')
 def BookingAgentViewFlights():
     date_time = datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S').split()
-    query = "SELECT * FROM flight, purchase, booking_agent, ticket WHERE flight.flight_num = ticket.flight_num" \
+    query = "SELECT * FROM flight, purchase, booking_agent, ticket WHERE flight.flight_num = ticket.flight_num " \
             "AND ticket.ticket_id = purchase.ticket_id AND purchase.booking_agent_email = booking_agent.email" \
-            "AND booking_agent.email = '{}' " \
-            .format(session['email'], date_time[0], date_time[1])
+            "AND booking_agent.email = %s AND departure_date > %s and " \
+            "departure_time > %s"
     cursor = conn.cursor()
-    cursor.execute(query)
+    cursor.execute(query, session['email'], date_time[0], date_time[1])
     data = cursor.fetchall()
     cursor.close()
     return render_template('BookingAgentViewFlights.html', data=data)
@@ -377,11 +430,11 @@ def BookingAgentSearchForFlights():
     return render_template("BookingAgentSearchForFlights.html")
 
 
-@app.route('/BookingAgentSearchForFlightsAuth', methods=["GET", "POST"])
-def BookingAgentSearchForFlightsAuth():
+@app.route('/BookingAgentSearchForFlightsDisplay', methods=["GET", "POST"])
+def BookingAgentSearchForFlightsDisplay():
     date_time = datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S').split()
-    query = "SELECT * FROM flight, purchase, ticket WHERE purchase.customer_email = '{}'" \
-            "AND purchase.ticket_id = ticket.ticket_id AND ticket.flight_num = flight.flight_num".format(date_time[0], date_time[1])
+    query = "SELECT * FROM flight, purchase, ticket WHERE purchase.customer_email = %s" \
+            "AND purchase.ticket_id = ticket.ticket_id AND ticket.flight_num = flight.flight_num"
     query_addition = []
     departure_airport = request.form['departure_airport']
     arrival_airport = request.form['arrival_airport']
@@ -404,31 +457,30 @@ def BookingAgentSearchForFlightsAuth():
     if query_addition:
         query += " and " + " and ".join(query_addition)
     cursor = conn.cursor()
-    cursor.execute(query)
+    cursor.execute(query, date_time[0], date_time[1])
     data = cursor.fetchall()
     cursor.close()
-    return render_template('/BookingAgentSearchForFlightsAuth.html', data=data)
+    return render_template('/BookingAgentSearchForFlightsDisplay.html', data=data)
 
 
 @app.route('/BookingAgentPurchaseAuth', methods=["GET", "POST"])
 def BookingAgentPurchaseAuth():
-    get = "SELECT * from purchaseable_tickets where flight_num = '{}' and airline_name = '{}' " \
-          "and departure_time = {} and departure_date = {}" \
-          .format(request.form['flight_num'], request.form['airline_name'], request.form['departure_time'], request.form['departure_date'])
-    
+    get = "SELECT * from purchaseable_tickets where flight_num = %s and airline_name = %s " \
+          "and departure_time = %d and departure_date = %d"
     cursor = conn.cursor()
-    cursor.execute(get)
+    cursor.execute(get, request.form['flight_num'], request.form['airline_name'], request.form['departure_time'],
+                   request.form['departure_date'])
     flight = cursor.fetchone()
     if flight:
-        ins = "INSERT into purchases VALUES ('{}', '{}', '{}', '{}')" \
-              .format(request_form['ticket_id', request_form['customer_username'], request_form['booking_agent_id'], request_form['departure_date'])
-        cursor.execute(ins)
+        ins = "INSERT into purchases VALUES (%s, %s, %s, %s)"
+        cursor.execute(ins, request.form['ticket_id'], request.form['customer_username'],
+                       request.form['booking_agent_id'], request.form['departure_date'])
         cursor.commit()
         error = 'TICKET PURCHASED'
     else:
         error = 'TICKET FAILED TO PURCHASE: FLIGHT NOT FOUND'
     cursor.close()
-    return render_template('/BookingAgentHome', error=error)"
+    return render_template('/BookingAgentHome', error=error)
 
 
 if __name__ == "__main__":
