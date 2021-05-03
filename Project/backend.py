@@ -327,161 +327,202 @@ def CustHome():
 
 @app.route('/CustViewMyFlights')
 def CustViewMyFlights():
-    date_time = datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S').split()
-    query = "SELECT * FROM flight, purchase, ticket WHERE flight.flight_status = 'upcoming' AND flight.flight_num =" \
-            " ticket.flight_num AND ticket.ticket_id = purchase.ticket_id AND purchase.customer_email = %s and departure_date > %s and departure_time > %s"
-    cursor = conn.cursor()
-    cursor.execute(query, session['email'], date_time[0], date_time[1])
-    data = cursor.fetchall()
-    cursor.close()
-    return render_template('CustViewMyFlights.html', data=data)
-
+    if VerifyCustomer():
+        date_time = datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S').split()
+        query = "SELECT * FROM flight, purchase, ticket WHERE flight.flight_status = 'upcoming' AND flight.flight_num =" \
+                " ticket.flight_num AND ticket.ticket_id = purchase.ticket_id AND purchase.customer_email = %s and departure_date > %s and departure_time > %s"
+        cursor = conn.cursor()
+        cursor.execute(query, session['email'], date_time[0], date_time[1])
+        data = cursor.fetchall()
+        cursor.close()
+        return render_template('CustViewMyFlights.html', data=data)
+    else:
+        redirect('/logout')
+    
 
 @app.route('CustSearchForFlights')
 def CustSearchForFlights():
-    return render_template("CustSearchForFlights.html")
+    if VerifyCustomer():
+        return render_template("CustSearchForFlights.html")
+    else:
+        redirect('/logout')
 
 @app.route('/CustSearchForFlightsDisplay', methods=["GET", "POST"])
 def CustSearchForFlightsDisplay():
-    date_time = datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S').split()
-    query = "SELECT * FROM purchaseable_tickets WHERE departure_date > %s and departure_time > %s"
-    query_addition = []
-    departure_airport = request.form['departure_airport']
-    arrival_airport = request.form['arrival_airport']
-    departure_date = request.form['departure_date']
-    arrival_date = request.form['arrival_date']
-    departure_city = request.form['departure_city']
-    arrival_city = request.form['arrival_city']
-    # REWORK THIS FOR SQL INJECTION PROTECTION
-    if departure_airport != '':
-        query_addition.append("departure_airport_name = '%s'" % departure_airport)
-    if arrival_airport != '':
-        query_addition.append("arrival_airport_name = '%s'" % arrival_airport)
-    if departure_date != '':
-        query_addition.append("departure_date = '%s'" % departure_date)
-    if arrival_date != '':
-        query_addition.append("arrival_date = '%s'" % arrival_date)
-    if departure_city != '':
-        query_addition.append("dep_port.city = '%s'" % departure_city)
-    if arrival_city != '':
-        query_addition.append("ar_port.city = '%s'" % arrival_city)
-    if query_addition:
-        query += " and " + " and ".join(query_addition)
-    cursor = conn.cursor()
-    cursor.execute(query, date_time[0], date_time[1])
-    data = cursor.fetchall()
-    cursor.close()
-    return render_template('CustSearchForFlightsDisplay.html', data=data)
+    if VerifyCustomer():
+        date_time = datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S').split()
+        query = "SELECT * FROM purchaseable_tickets WHERE departure_date > %s and departure_time > %s"
+        query_addition = []
+        departure_airport = request.form['departure_airport']
+        arrival_airport = request.form['arrival_airport']
+        departure_date = request.form['departure_date']
+        arrival_date = request.form['arrival_date']
+        departure_city = request.form['departure_city']
+        arrival_city = request.form['arrival_city']
+        # REWORK THIS FOR SQL INJECTION PROTECTION
+        if departure_airport != '':
+            query_addition.append("departure_airport_name = '%s'" % departure_airport)
+        if arrival_airport != '':
+            query_addition.append("arrival_airport_name = '%s'" % arrival_airport)
+        if departure_date != '':
+            query_addition.append("departure_date = '%s'" % departure_date)
+        if arrival_date != '':
+            query_addition.append("arrival_date = '%s'" % arrival_date)
+        if departure_city != '':
+            query_addition.append("dep_port.city = '%s'" % departure_city)
+        if arrival_city != '':
+            query_addition.append("ar_port.city = '%s'" % arrival_city)
+        if query_addition:
+            query += " and " + " and ".join(query_addition)
+        cursor = conn.cursor()
+        cursor.execute(query, date_time[0], date_time[1])
+        data = cursor.fetchall()
+        cursor.close()
+        return render_template('CustSearchForFlightsDisplay.html', data=data)
+    else:
+        redirect('/logout')
 
 
 @app.route('/CustPurchaseFlightsAuth', methods=["GET", "POST"])
 def CustPurchaseFlightAuth():
-    get = "SELECT * from purchaseable_tickets where flight_num = %s and airline_name = %s " \
-          "and departure_time = %d and departure_date = %d"
-    cursor = conn.cursor()
-    cursor.execute(get, request.form['flight_num'], request.form['airline_name'], request.form['departure_time'],
-                   request.form['departure_date'])
-    flight = cursor.fetchone()
-    if flight:
-        date_time = datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S').split()
-        ticket_id = secrets.token_urlsafe(5)
-        # first gonna create the ticket
-        ins_ticket = "INSERT into ticket VALUES (%s, %s, %s, %d, %s, %s, %s, %s, %d)"
-        cursor.execute(ins_ticket, ticket_id, flight[1], flight[0], request.form['price'], session['email'],
-                       request.form['debit_credit'], request.form['card_no'], request.form['cardholder'],
-                       request.form['card_exp'])
-        # then i wanna create the purchase record (NULL value is booking agent email)
-        ins_purchase = "INSERT into purchase VALUES (%s, %s, NULL, %s, %s)"
-        cursor.execute(ins_purchase, ticket_id, session['email'], date_time[0], date_time[1])
-        # then i wanna update the seats sold on the flight
-        update = "UPDATE flight SET tickets_sold = tickets_sold + 1 WHERE flight_num = %s"
-        cursor.execute(update, flight[0])
-        cursor.commit()
-        return redirect('/CustHome')
+    if VerifyCustomer():
+        get = "SELECT * from purchaseable_tickets where flight_num = %s and airline_name = %s " \
+              "and departure_time = %d and departure_date = %d"
+        cursor = conn.cursor()
+        cursor.execute(get, request.form['flight_num'], request.form['airline_name'], request.form['departure_time'],
+                       request.form['departure_date'])
+        flight = cursor.fetchone()
+        if flight:
+            date_time = datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S').split()
+            ticket_id = secrets.token_urlsafe(5)
+            # first gonna create the ticket
+            ins_ticket = "INSERT into ticket VALUES (%s, %s, %s, %d, %s, %s, %s, %s, %d)"
+            cursor.execute(ins_ticket, ticket_id, flight[1], flight[0], request.form['price'], session['email'],
+                           request.form['debit_credit'], request.form['card_no'], request.form['cardholder'],
+                           request.form['card_exp'])
+            # then i wanna create the purchase record (NULL value is booking agent email)
+            ins_purchase = "INSERT into purchase VALUES (%s, %s, NULL, %s, %s)"
+            cursor.execute(ins_purchase, ticket_id, session['email'], date_time[0], date_time[1])
+            # then i wanna update the seats sold on the flight
+            update = "UPDATE flight SET tickets_sold = tickets_sold + 1 WHERE flight_num = %s"
+            cursor.execute(update, flight[0])
+            cursor.commit()
+            return redirect('/CustHome')
+        else:
+            error = 'TICKET FAILED TO PURCHASE: FLIGHT NOT FOUND'
+            cursor.close()
+            return render_template('/CustSearchForFlights', error=error)
     else:
-        error = 'TICKET FAILED TO PURCHASE: FLIGHT NOT FOUND'
-        cursor.close()
-        return render_template('/CustSearchForFlights', error=error)
-
+        redirect('/logout')
 
 # BOOKING AGENT VIEWS
 
 @app.route('/BookingAgentHome')
 def BookingAgentHome():
-    return render_template("BookingAgentHome.html")
+    if VerifyBookingAgent():
+        return render_template("BookingAgentHome.html")
+    else:
+        redirect('/logout')
 
 
 @app.route('/BookingAgentViewFlights')
 def BookingAgentViewFlights():
-    date_time = datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S').split()
-    query = "SELECT * FROM flight, purchase, booking_agent, ticket WHERE flight.flight_num = ticket.flight_num " \
-            "AND ticket.ticket_id = purchase.ticket_id AND purchase.booking_agent_email = booking_agent.email" \
-            "AND booking_agent.email = %s AND departure_date > %s and " \
-            "departure_time > %s"
-    cursor = conn.cursor()
-    cursor.execute(query, session['email'], date_time[0], date_time[1])
-    data = cursor.fetchall()
-    cursor.close()
-    return render_template('BookingAgentViewFlights.html', data=data)
+    if VerifyBookingAgent():
+        date_time = datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S').split()
+        query = "SELECT * FROM flight, purchase, booking_agent, ticket WHERE flight.flight_num = ticket.flight_num " \
+                "AND ticket.ticket_id = purchase.ticket_id AND purchase.booking_agent_email = booking_agent.email" \
+                "AND booking_agent.email = %s AND departure_date > %s and " \
+                "departure_time > %s"
+        cursor = conn.cursor()
+        cursor.execute(query, session['email'], date_time[0], date_time[1])
+        data = cursor.fetchall()
+        cursor.close()
+        return render_template('BookingAgentViewFlights.html', data=data)
+    else:
+        redirect('/logout')
 
 
 @app.route('BookingAgentSearchForFlights')
 def BookingAgentSearchForFlights():
-    return render_template("BookingAgentSearchForFlights.html")
+    if VerifyBookingAgent():
+        return render_template("BookingAgentSearchForFlights.html")
+    else:
+        redirect('/logout')
 
 
 @app.route('/BookingAgentSearchForFlightsDisplay', methods=["GET", "POST"])
 def BookingAgentSearchForFlightsDisplay():
-    date_time = datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S').split()
-    query = "SELECT * FROM flight, purchase, ticket WHERE purchase.customer_email = %s" \
-            "AND purchase.ticket_id = ticket.ticket_id AND ticket.flight_num = flight.flight_num"
-    query_addition = []
-    departure_airport = request.form['departure_airport']
-    arrival_airport = request.form['arrival_airport']
-    departure_date = request.form['departure_date']
-    arrival_date = request.form['arrival_date']
-    departure_city = request.form['departure_city']
-    arrival_city = request.form['arrival_city']
-    if departure_airport != '':
-        query_addition.append("departure_airport_name = '%s'" % departure_airport)
-    if arrival_airport != '':
-        query_addition.append("arrival_airport_name = '%s'" % arrival_airport)
-    if departure_date != '':
-        query_addition.append("departure_date = '%s'" % departure_date)
-    if arrival_date != '':
-        query_addition.append("arrival_date = '%s'" % arrival_date)
-    if departure_city != '':
-        query_addition.append("dep_port.city = '%s'" % departure_city)
-    if arrival_city != '':
-        query_addition.append("ar_port.city = '%s'" % arrival_city)
-    if query_addition:
-        query += " and " + " and ".join(query_addition)
-    cursor = conn.cursor()
-    cursor.execute(query, date_time[0], date_time[1])
-    data = cursor.fetchall()
-    cursor.close()
-    return render_template('/BookingAgentSearchForFlightsDisplay.html', data=data)
-
+    if VerifyBookingAgent():
+        date_time = datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S').split()
+        query = "SELECT * FROM flight, purchase, ticket WHERE purchase.customer_email = %s" \
+                "AND purchase.ticket_id = ticket.ticket_id AND ticket.flight_num = flight.flight_num"
+        query_addition = []
+        departure_airport = request.form['departure_airport']
+        arrival_airport = request.form['arrival_airport']
+        departure_date = request.form['departure_date']
+        arrival_date = request.form['arrival_date']
+        departure_city = request.form['departure_city']
+        arrival_city = request.form['arrival_city']
+        if departure_airport != '':
+            query_addition.append("departure_airport_name = '%s'" % departure_airport)
+        if arrival_airport != '':
+            query_addition.append("arrival_airport_name = '%s'" % arrival_airport)
+        if departure_date != '':
+            query_addition.append("departure_date = '%s'" % departure_date)
+        if arrival_date != '':
+            query_addition.append("arrival_date = '%s'" % arrival_date)
+        if departure_city != '':
+            query_addition.append("dep_port.city = '%s'" % departure_city)
+        if arrival_city != '':
+            query_addition.append("ar_port.city = '%s'" % arrival_city)
+        if query_addition:
+            query += " and " + " and ".join(query_addition)
+        cursor = conn.cursor()
+        cursor.execute(query, date_time[0], date_time[1])
+        data = cursor.fetchall()
+        cursor.close()
+        return render_template('/BookingAgentSearchForFlightsDisplay.html', data=data)
+    else:
+        redirect('/logout')
+        
 
 @app.route('/BookingAgentPurchaseAuth', methods=["GET", "POST"])
 def BookingAgentPurchaseAuth():
-    get = "SELECT * from purchaseable_tickets where flight_num = %s and airline_name = %s " \
-          "and departure_time = %d and departure_date = %d"
-    cursor = conn.cursor()
-    cursor.execute(get, request.form['flight_num'], request.form['airline_name'], request.form['departure_time'],
-                   request.form['departure_date'])
-    flight = cursor.fetchone()
-    if flight:
-        ins = "INSERT into purchases VALUES (%s, %s, %s, %s)"
-        cursor.execute(ins, request.form['ticket_id'], request.form['customer_username'],
-                       request.form['booking_agent_id'], request.form['departure_date'])
-        cursor.commit()
-        error = 'TICKET PURCHASED'
+    if VerifyBookingAgent():
+        get = "SELECT * from purchaseable_tickets where flight_num = %s and airline_name = %s " \
+              "and departure_time = %d and departure_date = %d"
+        cursor = conn.cursor()
+        cursor.execute(get, request.form['flight_num'], request.form['airline_name'], request.form['departure_time'],
+                       request.form['departure_date'])
+        flight = cursor.fetchone()
+        if flight:
+            date_time = datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S').split()
+            ticket_id = secrets.token_urlsafe(5)
+##            # first gonna create the ticket
+##            ins_ticket = "INSERT into purchases VALUES (%s, %s, %s, %s)"
+##            cursor.execute(ins_, request.form['ticket_id'], request.form['customer_username'],
+##                           request.form['booking_agent_id'], request.form['departure_date'])
+            # first gonna create the ticket
+            ins_ticket = "INSERT into ticket VALUES (%s, %s, %s, %d, %s, %s, %s, %s, %d)"
+            cursor.execute(ins_ticket, ticket_id, flight[1], flight[0], request.form['price'], session['email'],
+                           request.form['debit_credit'], request.form['card_no'], request.form['cardholder'],
+                           request.form['card_exp'])
+            # then i wanna create the purchase record
+            ins_purchase = "INSERT into purchase VALUES (%s, %s, %s, %s, %s)"
+            cursor.execute(ins_purchase, ticket_id, session['email'], date_time[0], date_time[1])
+            # then i wanna update the seats sold on the flight
+            update = "UPDATE flight SET tickets_sold = tickets_sold + 1 WHERE flight_num = %s"
+            cursor.execute(update, flight[0])
+            cursor.commit()
+            error = 'TICKET PURCHASED'
+            return redirect('/BookingAgentHome')
+        else:
+            error = 'TICKET FAILED TO PURCHASE: FLIGHT NOT FOUND'
+        cursor.close()
+        return render_template('/BookingAgentHome', error=error)
     else:
-        error = 'TICKET FAILED TO PURCHASE: FLIGHT NOT FOUND'
-    cursor.close()
-    return render_template('/BookingAgentHome', error=error)
-
+        redirect('/logout')
+        
 
 if __name__ == "__main__":
     app.run('127.0.0.1', 5000, debug=True)
