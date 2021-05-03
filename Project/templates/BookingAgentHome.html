@@ -11,7 +11,12 @@
         <a href = "/BookingAgentSearchForFlights"><button>Search For Flights!</button></a>
         <a href = "/BookingAgentViewFlights"><button>View Previous Sales!</button></a>
         <a href = "/logout"><button>Log Out</button></a>
-        INSERT COMMISSION
+        You made ${{commission}} from {{tickets}} tickets in the past {{days}} days <br>
+        <form action="/BookingAgentHome" method="POST">
+        <label for="days">Change number of previous days to check</label>
+        <input type = "number" id="days" name = "days" placeholder = "# days" min="0" step="1" value="30"/>
+        <input type = "submit" value = Purchase /><br>
+        </form>
         INSERT TOP CUSTOMERS
     </p>
 </center>
