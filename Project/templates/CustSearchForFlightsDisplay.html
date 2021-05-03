@@ -48,12 +48,13 @@
         <input type = "text" required name = "airline_name" placeholder = "airline name" pattern = "{1,20}"/></br>
         <input type = "date" required name = "departure_date" placeholder = "departure date"/>
         <input type = "text" required name = "departure_time" placeholder = "departure time" pattern = "[0-23]{2}:[0-59]{2}:[0-59]{2}"/></br>
+		Payment Info:
 		<select name ="debit_credit" required><option value="credit">credit</option><option value="debit">debit</option></select>
         <input type = "text" required name = "card_no" placeholder = "card number" pattern = "[0-9]{16,19}"/></br>
         <input type = "text" required name = "cardholder" placeholder = "billing name" pattern = "{1,30}"/>
         <input type = "date" required name = "card_exp" placeholder = "card exp date"/></br>
 		<input type = "hidden" required name = "price" value = {{price}}>
-		<input type = "submit" value = Search /></br>
+		<input type = "submit" value = Purchase /></br>
     </form>
 <a href = "/CustHome"><button>Back to Home</button></a>
 

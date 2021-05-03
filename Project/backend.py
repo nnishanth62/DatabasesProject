@@ -1,11 +1,14 @@
 from flask import Flask, render_template, request, session, url_for, redirect, flash
 import pymysql
+import matplotlib.pyplot as plt
 import secrets
 from hashlib import md5
 from datetime import datetime, time, date
 import time
 
 app = Flask(__name__)
+# WANT NO CACHING BECAUSE WE WANT GRAPHS TO CONSTANTLY UPDATE
+app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0
 
 conn = pymysql.connect(host='localhost',
                        user='root',
@@ -15,6 +18,52 @@ conn = pymysql.connect(host='localhost',
                        cursorclass=pymysql.cursors.DictCursor)
 
 app.secret_key = secrets.token_urlsafe(16)
+
+
+# GRAPHS
+def graphs(plot, start_date=None, end_date=None):
+    cursor = conn.cursor()
+    if plot == "CustSpendingGraph":
+        if VerifyCustomer():
+            if start_date and end_date:
+                query = "SELECT * FROM ticket natural join purchase natural join flight WHERE purchase_date > %s and purchase_date < %s AND customer_email = %s"
+                cursor.execute(query, start_date, end_date, session['email'])
+            else:
+                end_date = datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S').split()[0]
+                if start_date:
+                    query = "SELECT * FROM ticket natural join purchase natural join flight WHERE purchase_date > %s AND customer_email = %s"
+                    cursor.execute(query, start_date, session['email'])
+                else:
+                    start_date = end_date.split('-')
+                    start_date[1] = str((int(start_date[1]) + 6) % 12)
+                    start_date = '-'.join(start_date)
+                    query = "SELECT * FROM ticket natural join purchase natural join flight WHERE purchase_date > %s AND customer_email = %s"
+                    cursor.execute(query, start_date, session['email'])
+            data = cursor.fetchall()
+            graphdata = {}
+            for line in data:
+                curr_month = (line['purchase_date'][:-3])
+                curr_price = int(line['sold_price'])
+                graphdata[curr_month] = graphdata[curr_month] + curr_price if curr_month in graphdata else curr_price
+            plt.bar(list(graphdata.keys()), list(graphdata.values()))
+            plt.title('Amount of Money Spent per Month')
+            plt.savefig("/graphs/CustSpendingGraph")
+        else:
+            return redirect('/logout')
+
+
+@app.route('CustSpendingGraph')
+def CustSpendingGraph():
+    if VerifyCustomer():
+        start_date = request.form.get("start_date")
+        end_date = request.form.get("end_date")
+        graphs("CustSpendingGraph", start_date, end_date)
+        return redirect('/CustHome')
+    else:
+        return redirect('/logout')
+
+
+# VERIFICATION
 
 def VerifyCustomer():
     """
@@ -103,7 +152,8 @@ def loginAuthCustomer():
     cursor.close()
     if data:
         session['email'] = email
-        return redirect(url_for('CustHome'))
+        session['username'] = data[1]
+        return redirect('/CustHome')
     else:
         return render_template('loginCustomer.html', error="INVALID LOGIN!")
 
@@ -120,6 +170,7 @@ def loginAuthBookingAgent():
     cursor.close()
     if data:
         session['email'] = email
+        session['username'] = data[0]
         return redirect(url_for('/BookingAgentHome'))
     else:
         return render_template('loginBookingAgent.html', error="INVALID LOGIN!")
@@ -137,6 +188,7 @@ def loginAuthAirlineStaff():
     cursor.close()
     if data:
         session['email'] = email
+        session['username'] = data[1]
         return redirect(url_for('AirlineStaffHome'))
     else:
         return render_template('loginAirlineStaff.html', error="INVALID LOGIN!")
@@ -148,6 +200,7 @@ def loginAuthAirlineStaff():
 def logout():
     session.pop(session['email'])
     return redirect('/')
+
 
 # REGISTER METHODS
 @app.route('/register')
@@ -210,7 +263,7 @@ def registerAuthCustomer():
         passport_country = request.form['passport_country']
         passport_exp = request.form['passport_expiration']
         dob = request.form['DOB']
-        ins = "INSERT INTO customer values (%s, %s, %s, %s, %s, %d, %s, %s, %s, %s, %s, %d, %d)"
+        ins = "INSERT INTO customer values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
         cursor.execute(ins, email, first_name, last_name, cust_password, phone, address[0], address[1], address[2],
                        address[3], passport_no, passport_country, passport_exp, dob)
         conn.commit()
@@ -234,7 +287,7 @@ def registerAuthAirlineStaff():
         password = md5(request.form['password'].encode()).hexdigest()
         dob = request.form['DOB']
         airline = request.form['airline_name']
-        ins = "INSERT INTO airline_staff VALUES(%s,%s,%s,%s,%d,%s)"
+        ins = "INSERT INTO airline_staff VALUES(%s,%s,%s,%s,%s,%s)"
         cursor.execute(ins, username, fname, lname, password, dob, airline)
         conn.commit()
         cursor.close()
@@ -255,7 +308,7 @@ def registerAuthBookingAgent():
         password = md5(request.form['password'].encode()).hexdigest()
         agent_id = request.form['booking_agent_id']
         commission = 0
-        ins = "INSERT INTO booking_agent VALUES(%s,%s,%s,%d)"
+        ins = "INSERT INTO booking_agent VALUES(%s,%s,%s,%s)"
         cursor.execute(ins, email, agent_id, password, commission)
         conn.commit()
         cursor.close()
@@ -265,6 +318,7 @@ def registerAuthBookingAgent():
 @app.route('/logout')
 def logout():
     session.pop('username')
+    session.pop('email')
     return redirect('/')
 
 
@@ -319,9 +373,11 @@ def publicviewSearchAuth():
 
 @app.route('/CustHome')
 def CustHome():
-    if VerifyCustomer(): # if looking for their name has a result, send them to home
+    if VerifyCustomer():  # if looking for their name has a result, send them to home
+        current_date = datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S').split()[0]
+        name = session['username']
         return render_template("CustHome.html")
-    else: # otherwise we just kill their session
+    else:  # otherwise we just kill their session
         redirect('/logout')
 
 
@@ -338,7 +394,7 @@ def CustViewMyFlights():
         return render_template('CustViewMyFlights.html', data=data)
     else:
         redirect('/logout')
-    
+
 
 @app.route('CustSearchForFlights')
 def CustSearchForFlights():
@@ -346,6 +402,7 @@ def CustSearchForFlights():
         return render_template("CustSearchForFlights.html")
     else:
         redirect('/logout')
+
 
 @app.route('/CustSearchForFlightsDisplay', methods=["GET", "POST"])
 def CustSearchForFlightsDisplay():
@@ -387,7 +444,7 @@ def CustSearchForFlightsDisplay():
 def CustPurchaseFlightAuth():
     if VerifyCustomer():
         get = "SELECT * from purchaseable_tickets where flight_num = %s and airline_name = %s " \
-              "and departure_time = %d and departure_date = %d"
+              "and departure_time = %s and departure_date = %s"
         cursor = conn.cursor()
         cursor.execute(get, request.form['flight_num'], request.form['airline_name'], request.form['departure_time'],
                        request.form['departure_date'])
@@ -396,7 +453,7 @@ def CustPurchaseFlightAuth():
             date_time = datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S').split()
             ticket_id = secrets.token_urlsafe(5)
             # first gonna create the ticket
-            ins_ticket = "INSERT into ticket VALUES (%s, %s, %s, %d, %s, %s, %s, %s, %d)"
+            ins_ticket = "INSERT into ticket VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)"
             cursor.execute(ins_ticket, ticket_id, flight[1], flight[0], request.form['price'], session['email'],
                            request.form['debit_credit'], request.form['card_no'], request.form['cardholder'],
                            request.form['card_exp'])
@@ -415,11 +472,13 @@ def CustPurchaseFlightAuth():
     else:
         redirect('/logout')
 
+
 # BOOKING AGENT VIEWS
 
 @app.route('/BookingAgentHome')
 def BookingAgentHome():
     if VerifyBookingAgent():
+        name = session['username']
         return render_template("BookingAgentHome.html")
     else:
         redirect('/logout')
@@ -429,13 +488,15 @@ def BookingAgentHome():
 def BookingAgentViewFlights():
     if VerifyBookingAgent():
         date_time = datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S').split()
-        query = "SELECT * FROM flight, purchase, booking_agent, ticket WHERE flight.flight_num = ticket.flight_num " \
-                "AND ticket.ticket_id = purchase.ticket_id AND purchase.booking_agent_email = booking_agent.email" \
+        query = "SELECT * FROM flight, purchase, booking_agent, ticket, customer WHERE flight.flight_num = ticket.flight_num " \
+                "AND ticket.ticket_id = purchase.ticket_id AND purchase.booking_agent_email = booking_agent.email " \
+                "AND flight.airline_name = ticket.flight_airline_name AND customer.email = purchase.customer_email" \
                 "AND booking_agent.email = %s AND departure_date > %s and " \
                 "departure_time > %s"
         cursor = conn.cursor()
         cursor.execute(query, session['email'], date_time[0], date_time[1])
         data = cursor.fetchall()
+
         cursor.close()
         return render_template('BookingAgentViewFlights.html', data=data)
     else:
@@ -484,13 +545,13 @@ def BookingAgentSearchForFlightsDisplay():
         return render_template('/BookingAgentSearchForFlightsDisplay.html', data=data)
     else:
         redirect('/logout')
-        
+
 
 @app.route('/BookingAgentPurchaseAuth', methods=["GET", "POST"])
 def BookingAgentPurchaseAuth():
     if VerifyBookingAgent():
         get = "SELECT * from purchaseable_tickets where flight_num = %s and airline_name = %s " \
-              "and departure_time = %d and departure_date = %d"
+              "and departure_time = %s and departure_date = %s"
         cursor = conn.cursor()
         cursor.execute(get, request.form['flight_num'], request.form['airline_name'], request.form['departure_time'],
                        request.form['departure_date'])
@@ -498,31 +559,28 @@ def BookingAgentPurchaseAuth():
         if flight:
             date_time = datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S').split()
             ticket_id = secrets.token_urlsafe(5)
-##            # first gonna create the ticket
-##            ins_ticket = "INSERT into purchases VALUES (%s, %s, %s, %s)"
-##            cursor.execute(ins_, request.form['ticket_id'], request.form['customer_username'],
-##                           request.form['booking_agent_id'], request.form['departure_date'])
             # first gonna create the ticket
-            ins_ticket = "INSERT into ticket VALUES (%s, %s, %s, %d, %s, %s, %s, %s, %d)"
-            cursor.execute(ins_ticket, ticket_id, flight[1], flight[0], request.form['price'], session['email'],
+            ins_ticket = "INSERT into ticket VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)"
+            cursor.execute(ins_ticket, ticket_id, flight[1], flight[0], request.form['price'], request.form['email'],
                            request.form['debit_credit'], request.form['card_no'], request.form['cardholder'],
                            request.form['card_exp'])
             # then i wanna create the purchase record
             ins_purchase = "INSERT into purchase VALUES (%s, %s, %s, %s, %s)"
-            cursor.execute(ins_purchase, ticket_id, session['email'], date_time[0], date_time[1])
+            cursor.execute(ins_purchase, ticket_id, request.form['email'], session['email'], date_time[0], date_time[1])
             # then i wanna update the seats sold on the flight
             update = "UPDATE flight SET tickets_sold = tickets_sold + 1 WHERE flight_num = %s"
             cursor.execute(update, flight[0])
+            commission_update = "UPDATE booking_agent SET commmission = commission + %s * 0.10"
+            cursor.execute(commission_update, request.form['price'])
             cursor.commit()
-            error = 'TICKET PURCHASED'
+            cursor.close()
             return redirect('/BookingAgentHome')
-        else:
-            error = 'TICKET FAILED TO PURCHASE: FLIGHT NOT FOUND'
+        error = 'TICKET FAILED TO PURCHASE: FLIGHT NOT FOUND'
         cursor.close()
         return render_template('/BookingAgentHome', error=error)
     else:
         redirect('/logout')
-        
+
 
 if __name__ == "__main__":
     app.run('127.0.0.1', 5000, debug=True)

@@ -8,11 +8,17 @@
 <center>
     <h1>Welcome back {{name}}!</h1>
     <p>
-        INSERT BAR GRAPH HERE
-        <a href = "/CustViewMyFlights"><button>Register!</button></a>
-        <a href = "/CustSearchForFlights"><button>Login!</button></a>
-        <a href = "/CustGiveRatings"><button>View Public Info!</button></a><br>
+        <img src="CustSpendingGraph.png" alt="Customer Spending Graph">
+        <a href = "/CustViewMyFlights"><button>View Your Flights!</button></a>
+        <a href = "/CustSearchForFlights"><button>Search for Flights!</button></a>
+        <a href = "/CustGiveRatings"><button>Rate Previous Flights!</button></a><br>
         <a href = "/logout"><button>Log Out</button></a>
+    Update your graph:
+    <form action="/CustSpendingGraph" method="POST">
+        <input type = "date" required name = "start_date" placeholder = "start date" max="{{current_date}}"/>
+        <input type = "date" name = "end_date" placeholder = "end date" max="{{current_date}}"/>
+        <input type = "submit" value = Update /></br>
+    </form>
     </p>
 </center>
 </body>
