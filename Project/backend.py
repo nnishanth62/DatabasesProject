@@ -274,6 +274,7 @@ def registerAuthCustomer():
                        address[3], passport_no, passport_country, passport_exp, dob)
         conn.commit()
         cursor.close()
+        flash("SUCCESSFULLY REGISTERED CUSTOMER")
         return redirect("/")
 
 
@@ -298,6 +299,7 @@ def registerAuthAirlineStaff():
         cursor.execute(ins, username, fname, lname, password, dob, airline)
         conn.commit()
         cursor.close()
+        flash("SUCCESSFULLY REGISTERED AIRLINE STAFF")
         return redirect('/')
 
 
@@ -320,6 +322,7 @@ def registerAuthBookingAgent():
         cursor.execute(ins, email, agent_id, password, commission)
         conn.commit()
         cursor.close()
+        flash("SUCCESSFULLY REGISTERED AIRLINE STAFF")
         return redirect('/')
 
 
@@ -472,7 +475,7 @@ def CustPurchaseFlightAuth():
             error = 'TICKET FAILED TO PURCHASE: FLIGHT NOT FOUND'
             flash(error)
             cursor.close()
-            return render_template('/CustHome')
+            return redirect('/CustHome')
     else:
         return redirect('/logout')
 
@@ -588,7 +591,7 @@ def BookingAgentPurchaseAuth():
             return redirect('/BookingAgentHome')
         flash('TICKET FAILED TO PURCHASE: FLIGHT NOT FOUND')
         cursor.close()
-        return render_template('BookingAgentHome.html')
+        return redirect('/BookingAgentHome')
     else:
         return redirect('/logout')
 
