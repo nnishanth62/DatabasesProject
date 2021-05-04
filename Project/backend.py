@@ -595,6 +595,83 @@ def BookingAgentPurchaseAuth():
     else:
         return redirect('/logout')
 
+# AIRLINE STAFF VIEWS
 
+@app.route('/AirlineStaffHome')
+def AirlineStaffHome():
+    if VerifyAirlineStaff():
+        name = session['username']
+        return render_template("AirlineStaffHome.html")
+    else:
+        redirect('/logout')
+
+@app.route('/AirlineStaffCreateFlights')
+def AirlineStaffCreateFlights():
+    if VerifyAirlineStaff():
+        date_time = datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S').split()
+        insert = "INSERT INTO flight VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s)"
+        cursor.execute(insert, request.form['flight_num'], request.form['airline_name'], request.form['airplane_id'], \
+                       request.form['departure_time'], request.form['departure_date'], request.form['departure_airport_name'], \
+                       request.form['arrival_time'], request.form['arrival_date'], request.form['arrival_airport_name'], \
+                       request.form['price'], request.form['flight_status'])
+        data = cursor.fetchall()
+        cursor.close()
+        return render_template('AirlineStaffCreateFlights.html', data=data)
+    else:
+        redirect('/logout')
+
+@app.route('/AirlineStaffChangeFlightStatus')
+def AirlineStaffChangeFlightStatus():
+    if VerifyAirlineStaff():
+        date_time = datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S').split()
+        query = "UPDATE flight SET flight.flight_status = %s WHERE flight_num = %s AND airline_name = %s"
+        cursor.execute(query, request.form['flight_status'], request.form['flight_num'], request.form['airplane_name'])
+        data = cursor.fetchall()
+        cursor.close()
+        return render_template('AirlineStaffCreateFlights.html', data=data)
+    else:
+        redirect('/logout')
+
+@app.route('/AirlineStaffAddAirplane')
+def AirlineStaffAddAirplane():
+    if VerifyAirlineStaff():
+        date_time = datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S').split()
+        insert = "INSERT INTO airplane VALUES(%s,%s,%d)"
+        cursor.execute(insert, request.form['id'], request.form['airline_name'], request.form['seats'])
+        data = cursor.fetchall()
+        cursor.close()
+        return render_template('AirlineStaffAddAirplane.html', data=data)
+    else:
+        redirect('/logout')
+
+@app.route('/AirlineStaffAddAirport')
+def AirlineStaffAddAirport():
+    if VerifyAirlineStaff():
+        date_time = datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S').split()
+        insert = "INSERT INTO airport VALUES(%s,%s)"
+        cursor.execute(insert, request.form['name'], request.form['city'])
+        data = cursor.fetchall()
+        cursor.close()
+        return render_template('AirlineStaffAddAirport.html', data=data)
+    else:
+        redirect('/logout')
+
+@app.route('/AirlineStaffViewTopDestinations')
+def AirlineStaffViewTopDestinations():
+    if VerifyBookingAgent():
+        date_time = datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S').split()
+        query = "SELECT arrival_airport_name, count(t.ticket_id) FROM flight f JOIN ticket t ON f.flight_num = t.flight_num " \
+                "JOIN purchase p ON t.ticket_id = p.ticket_id AND p.purchase_date >= %s " \
+                "GROUP BY arrival_airport_name ORDER BY count(t.ticket_id) desc LIMIT 5"
+        cursor = conn.cursor()
+        cursor.execute(query, request.form['purchase_date'])
+        data = cursor.fetchall()
+
+        cursor.close()
+        return render_template('AirlineStaffViewTopDestinations.html', data=data)
+    else:
+        redirect('/logout')
+
+        
 if __name__ == "__main__":
     app.run('127.0.0.1', 5000, debug=True)
