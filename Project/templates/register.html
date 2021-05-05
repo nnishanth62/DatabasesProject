@@ -5,8 +5,19 @@
     <title>Register</title>
 </head>
 <body>
+{% with messages = get_flashed_messages() %}
+  {% if messages %}
+    <ul class=flashes>
+    {% for message in messages %}
+      <li>{{ message }}</li>
+    {% endfor %}
+    </ul>
+  {% endif %}
+{% endwith %}
     <a href = "/registerCustomer"><button>Customer registration</button></a>
     <a href = "/registerBookingAgent"><button>Booking Agent registration</button></a>
     <a href = "/registerAirlineStaff"><button>Airline Staff registration</button></a>
+<br><a href = "/Home"><button>Back to Home</button></a>
+
 </body>
 </html>

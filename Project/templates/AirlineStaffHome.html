@@ -2,9 +2,31 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Title</title>
+    <title>Welcome back Airline Worker!</title>
 </head>
 <body>
+{% with messages = get_flashed_messages() %}
+  {% if messages %}
+    <ul class=flashes>
+    {% for message in messages %}
+      <li>{{ message }}</li>
+    {% endfor %}
+    </ul>
+  {% endif %}
+{% endwith %}
+<center>
+    <h1>Welcome back {{name}}!</h1>
+    <p>
+        <a href = "/AirlineStaffViewFlights"><button>View or Modify Flights!</button></a>
+        <a href = "/AirlineStaffCreate"><button>Register a new Plane or Airport!</button></a>
+        <a href = "/AirlineStaffStats"><button>View Statistics for your Airline!</button></a><br>
+        <a href = "/publicviewSearch"><button>View Public Info!</button></a><br>
+
+        <a href = "/logout"><button>Log Out</button></a>
+    <br>
+    </p>
+
+</center>
 
 </body>
 </html>

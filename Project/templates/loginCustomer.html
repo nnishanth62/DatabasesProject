@@ -5,9 +5,15 @@
     <title>Login</title>
 </head>
 <body>
-    {% if error %}
-    <p class=error><strong>Error:</strong> {{ error }}
-    {% endif %}
+{% with messages = get_flashed_messages() %}
+  {% if messages %}
+    <ul class=flashes>
+    {% for message in messages %}
+      <li>{{ message }}</li>
+    {% endfor %}
+    </ul>
+  {% endif %}
+{% endwith %}
     <form action = "/loginAuthCustomer" method = "POST">
         <input type = "text" name = "email" placeholder = "email"/></br>
         <input type = "password" name = "password" placeholder = "password"/></br>

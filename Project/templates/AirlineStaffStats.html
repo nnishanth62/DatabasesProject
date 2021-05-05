@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Airline Staff Statistics</title>
+</head>
+<body>
+{% with messages = get_flashed_messages() %}
+  {% if messages %}
+    <ul class=flashes>
+    {% for message in messages %}
+      <li>{{ message }}</li>
+    {% endfor %}
+    </ul>
+  {% endif %}
+{% endwith %}
+<h1>Statistics for {{airline}}</h1>
+<h2>Average flight ratings:</h2>
+<style type="text/css">
+	table, th, td{
+		border: 1px solid black;
+	}
+</style>
+<table>
+	<th>Flight no.</th>
+	<th>Average Rating</th>
+{% for line in avg_ratings %}
+	<tr>
+		<td>{{line['flight_num']}}</td>
+		<td>{{line['avg']}}/5</td>
+	</tr>
+{% endfor %}
+</table><br>
+Enter a flight number to view its reviews:
+<form action="/AirlineStaffReview" method="POST">
+    <input type = "text" required name = "flight_num" placeholder = "flight number" pattern = "{6}"/><br>
+    <input type = "submit" value = "Search" /><br>
+</form><br>
+<h2>Top 5 booking agents by sales:</h2>
+<table>
+	<th>Agent Email</th>
+	<th>Tickets Sold</th>
+{% for line in top_agents %}
+	<tr>
+		<td>{{line['tickets_sold']}}</td>
+		<td>{{line['booking_agent_email']}}</td>
+	</tr>
+{% endfor %}
+</table><br>
+<h2>Top destinations in past 3 months:</h2>
+<table>
+	<th>City</th>
+	<th>Tickets Sold</th>
+{% for line in dest_three_months %}
+	<tr>
+		<td>{{line['arrival_city']}}</td>
+		<td>{{line['trips_made']}}</td>
+	</tr>
+{% endfor %}
+</table><br>
+<h2>Top destinations in past year:</h2>
+<table>
+	<th>City</th>
+	<th>Tickets Sold</th>
+{% for line in dest_year %}
+	<tr>
+		<td>{{line['arrival_city']}}</td>
+		<td>{{line['trips_made']}}</td>
+	</tr>
+{% endfor %}
+</table><br>
+        <img src="/graphs/AirlineStaffTicketCount.png" alt="Ticket Count Report"><br>
+		Adjust Graph Range (default past year): <br>
+		<form action="/AirlineStaffStats" method="POST">
+			<input type="date" name="start_date" placeholder="start date" required max="{{current_date}}"/>
+			<input type="date" name="end_date" placeholder="end date" required max="{{current_date}}"/>
+			<input type = "submit" value = "Update" /><br>
+		</form>
+<br>
+        <img src="/graphs/AirlineStaffBAvCustSales.png" alt="BA vs Customer ticket sales"><br>
+
+<a href = "/Home"><button>Back to Home</button></a>
+
+</body>
+</html>

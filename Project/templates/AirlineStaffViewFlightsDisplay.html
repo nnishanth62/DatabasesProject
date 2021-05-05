@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Search Results</title>
+</head>
+<body>
+{% with messages = get_flashed_messages() %}
+  {% if messages %}
+    <ul class=flashes>
+    {% for message in messages %}
+      <li>{{ message }}</li>
+    {% endfor %}
+    </ul>
+  {% endif %}
+{% endwith %}
+
+<style type="text/css">
+	table, th, td{
+		border: 1px solid black;
+	}
+</style>
+
+<table>
+	<th>Flight no.</th>
+	<th>Departure Date</th>
+	<th>Departure Time</th>
+	<th>Arrival Date</th>
+	<th>Arrival Time</th>
+	<th>Departure Airport</th>
+	<th>Departure City</th>
+	<th>Arrival Airport</th>
+	<th>Arrival City</th>
+
+{% for line in data %}
+	<tr>
+		<td>{{line['flight_num']}}</td>
+		<td>{{line['departure_date']}}</td>
+		<td>{{line['departure_time']}}</td>
+		<td>{{line['arrival_date']}}</td>
+		<td>{{line['arrival_time']}}</td>
+		<td>{{line['departure_airport_name']}}</td>
+		<td>{{line['dep_port.city']}}</td>
+        <td>{{line['arrival_airport_name']}}</td>
+		<td>{{line['ar_port.city']}}</td>
+	</tr>
+{% endfor %}
+</table>
+
+<br>
+
+<h1>Create a flight:</h1>
+    <form action = "/AirlineStaffCreateFlights" method = "POST">
+		<input type = "text" required name = "airplane_id" placeholder = "airplane ID" pattern = "{5}"/><br>
+		Enter departure date and time:<br>
+        <input type = "date" required name = "departure_date" placeholder = "departure date"/>
+		<input type = "time" required name = "departure_time" placeholder = "departure time"/><br>
+		Enter arrival date and time:<br>
+        <input type = "date" required name = "arrival_date" placeholder = "arrival date"/>
+		<input type = "time" required name = "arrival_time" placeholder = "arrival time"/><br>
+		<input type="text" required name = "departure_airport_name" placeholder="departure airport name"/>
+		<input type="text" required name="arrival_airport_name" placeholder="arrival airport name"/><br>
+		Enter starting price:<br>
+		<input type="number" required name="price" placeholder="price" step="0.01"/><br>
+		<input type = "submit" value = "Create Flight" /><br>
+    </form>
+
+
+<h1>Change the status of an existing flight:</h1>
+<form action="/AirlineStaffChangeFlightStatus" method="POST">
+	<input type="text" required name = "flight_num" placeholder="flight no." pattern="{6}"/>
+	<select name="flight_status" required><option value="on-time">On Time</option><option value="delayed">Delayed</option></select>
+	<input type="submit" value="Update Flight">
+</form>
+<br>
+<a href = "/Home"><button>Back to Home</button></a>
+
+</body>
+</html>

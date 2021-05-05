@@ -5,6 +5,15 @@
     <title>Search Results</title>
 </head>
 <body>
+{% with messages = get_flashed_messages() %}
+  {% if messages %}
+    <ul class=flashes>
+    {% for message in messages %}
+      <li>{{ message }}</li>
+    {% endfor %}
+    </ul>
+  {% endif %}
+{% endwith %}
 
 <style type="text/css">
 	table, th, td{
@@ -54,10 +63,9 @@
         <input type = "text" required name = "card_no" placeholder = "card number" pattern = "[0-9]{16,19}"/></br>
         <input type = "text" required name = "cardholder" placeholder = "billing name" pattern = "{1,30}"/>
         <input type = "date" required name = "card_exp" placeholder = "card exp date"/></br>
-		<input type = "submit" value = Purchase /></br>
+		<input type = "submit" value = "Purchase" /></br>
     </form>
-</br>
-<a href = "/BookingAgentHome"><button>Back to Home</button></a>
+<br><a href = "/Home"><button>Back to Home</button></a>
 
 
 </body>

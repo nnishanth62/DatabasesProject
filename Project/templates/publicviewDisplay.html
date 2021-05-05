@@ -5,7 +5,15 @@
     <title>Search Results</title>
 </head>
 <body>
-
+{% with messages = get_flashed_messages() %}
+  {% if messages %}
+    <ul class=flashes>
+    {% for message in messages %}
+      <li>{{ message }}</li>
+    {% endfor %}
+    </ul>
+  {% endif %}
+{% endwith %}
 <style type="text/css">
 	table, th, td{
 		border: 1px solid black;
@@ -33,13 +41,14 @@
 		<td>{{line['arrival_date']}}</td>
 		<td>{{line['arrival_time']}}</td>
 		<td>{{line['departure_airport_name']}}</td>
-		<td>{{line['city']}}</td>
+		<td>{{line['dep_port.city']}}</td>
         <td>{{line['arrival_airport_name']}}</td>
 		<td>{{line['ar_port.city']}}</td>
 	</tr>
 {% endfor %}
-</table>
+</table><br>
 
+<a href = "/Home"><button>Back to Home</button></a>
 
 </body>
 </html>

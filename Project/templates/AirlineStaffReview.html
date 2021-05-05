@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Airline Staff Reviews</title>
+</head>
+<body>
+{% with messages = get_flashed_messages() %}
+  {% if messages %}
+    <ul class=flashes>
+    {% for message in messages %}
+      <li>{{ message }}</li>
+    {% endfor %}
+    </ul>
+  {% endif %}
+{% endwith %}
+<h2>Average flight ratings for {{flight_num}}:</h2>
+<style type="text/css">
+	table, th, td{
+		border: 1px solid black;
+	}
+</style>
+<table>
+    <th>Customer</th>
+	<th>Rating</th>
+	<th>Comments</th>
+{% for line in ratings %}
+	<tr>
+		<td>{{line['first_name'] + ' ' + line['last_name']}}</td>
+		<td>{{line['rating']}}/5</td>
+        <td>{{line['comments']}}</td>
+	</tr>
+{% endfor %}
+</table><br>
+<a href = "/AirlineStaffStats"><button>Back to Statistics</button></a>
+</body>
+</html>
+

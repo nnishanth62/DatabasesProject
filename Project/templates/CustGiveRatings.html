@@ -1,10 +1,82 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Title</title>
+    <meta charset="UTF-8">
+    <title></title>
 </head>
 <body>
+{% with messages = get_flashed_messages() %}
+  {% if messages %}
+    <ul class=flashes>
+    {% for message in messages %}
+      <li>{{ message }}</li>
+    {% endfor %}
+    </ul>
+  {% endif %}
+{% endwith %}
+
+<style type="text/css">
+	table, th, td{
+		border: 1px solid black;
+	}
+</style>
+Your previous flights:
+<table>
+	<th>Airline name</th>
+	<th>Flight no.</th>
+	<th>Departure Date</th>
+	<th>Departure Time</th>
+	<th>Arrival Date</th>
+	<th>Arrival Time</th>
+	<th>Departure Airport</th>
+	<th>Departure City</th>
+	<th>Arrival Airport</th>
+	<th>Arrival City</th>
+	<th>Sale Price</th>
+
+{% for line in allflights %}
+	<tr>
+		<td>{{line['flight.airline_name']}}</td>
+		<td>{{line['flight.flight_num']}}</td>
+		<td>{{line['departure_date']}}</td>
+		<td>{{line['departure_time']}}</td>
+		<td>{{line['arrival_date']}}</td>
+		<td>{{line['arrival_time']}}</td>
+		<td>{{line['departure_airport_name']}}</td>
+        <td>{{line['arrival_airport_name']}}</td>
+		<td>{{line['sold_price']}}</td>
+	</tr>
+{% endfor %}
+</table>
+<br>
+Your existing reviews:
+<table>
+	<th>Airline name</th>
+	<th>Flight no.</th>
+	<th>Rating</th>
+	<th>Comments</th>
+
+{% for line in prevratings %}
+	<tr>
+		<td>{{line['airline_name']}}</td>
+		<td>{{line['flight_num']}}</td>
+		<td>{{line['rating']}}</td>
+		<td>{{line['comments']}}</td>
+	</tr>
+{% endfor %}
+</table>
+<h1>Rate a previous flight:</h1><br>
+You can only rate flights you have not already rated
+    <form action = "/CustRatingAuth" method = "POST">
+		<input type = "text" required name = "flight_num" placeholder = "flight number" pattern = "{6}"/><br>
+        <input type = "text" required name = "airline_name" placeholder = "airline name" pattern = "{1,20}"/><br>
+        <label for="rating">Numerical rating (out of 5):</label>
+		<input type = "number" id="rating" required name = "rating" placeholder = "rating" max="5" min="1"/><br>
+        <input type = "text" required name = "comment" placeholder = "Please enter your reason for this rating:" size="100" pattern = "{1,300}"/><br>
+        <input type = "submit" value = "Submit Rating"/><br>
+    </form>
+<br><a href = "/Home"><button>Back to Home</button></a>
+
 
 </body>
 </html>

@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Register New Entities!</title>
+</head>
+<body>
+{% with messages = get_flashed_messages() %}
+  {% if messages %}
+    <ul class=flashes>
+    {% for message in messages %}
+      <li>{{ message }}</li>
+    {% endfor %}
+    </ul>
+  {% endif %}
+{% endwith %}
+<h1>Airports:</h1>
+<table>
+	<th>Code</th>
+	<th>City</th>
+{% for line in ports %}
+	<tr>
+		<td>{{line['name']}}</td>
+		<td>{{line['city']}}</td>
+	</tr>
+{% endfor %}
+</table>
+<h1>Register an Airport:</h1>
+<form action="/AirlineStaffAddAirport" method="POST">
+	<input type="text" required name = "name" placeholder="airport code" pattern="[A-Z]{2,4}"/>
+    <input type="text" required name="city" placeholder="airport city" pattern="{1,20}"/>
+	<input type="submit" value="Register Airport">
+</form>
+<br>
+<br>
+<h1>Airports owned by your airline:</h1>
+<table>
+	<th>ID</th>
+	<th>Seats</th>
+{% for line in planes %}
+	<tr>
+		<td>{{line['ID']}}</td>
+		<td>{{line['seats']}}</td>
+	</tr>
+{% endfor %}
+</table>
+<h1>Register a new Airplane:</h1>
+Enter number of seats (airplane ID will be randomly generated):
+<form action="/AirlineStaffAddAirplane" method="POST">
+	<input type="number" name="seats"/>
+	<input type="submit" value="Register Airplane">
+</form>
+
+<a href = "/Home"><button>Back to Home</button></a>
+</body>
+</html>

@@ -5,6 +5,15 @@
     <title>Search for flights</title>
 </head>
 <body>
+{% with messages = get_flashed_messages() %}
+  {% if messages %}
+    <ul class=flashes>
+    {% for message in messages %}
+      <li>{{ message }}</li>
+    {% endfor %}
+    </ul>
+  {% endif %}
+{% endwith %}
 <h1>Search for future flights:</h1>
     <form action = "/publicviewDisplay" method = "POST">
         <input type = "date" name = "departure_date" placeholder = "departure date"/>
@@ -13,7 +22,9 @@
         <input type = "text" name = "arrival_city" placeholder = "arrival city" pattern = "{1,20}"/></br>
         <input type = "text" name = "departure_airport" placeholder = "departure airport" pattern = "{1,20}"/>
         <input type = "text" name = "arrival_airport" placeholder = "arrival airport" pattern = "{1,20}"/></br>
-        <input type = "submit" value = Search /></br>
+        <input type = "submit" value = "Search" /></br>
     </form>
+<br><a href = "/Home"><button>Back to Home</button></a>
+
 </body>
 </html>

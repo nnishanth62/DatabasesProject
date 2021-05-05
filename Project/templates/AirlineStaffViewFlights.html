@@ -14,17 +14,19 @@
     </ul>
   {% endif %}
 {% endwith %}
-<h1>Search for future flights:</h1>
-    <form action = "/publicviewSearchAuth" method = "POST">
-        <input type = "date" name = "departure_date" placeholder = "departure date"/>
-        <input type = "date" name = "arrival_date" placeholder = "arrival date"/></br>
+<h1>Filter future flights: (no required parameters)</h1>
+    <form action = "/AirlineStaffViewFlightsDisplay" method = "POST">
+        Enter range of departure dates (default is following 30 days):
+        <input type = "date" name = "first_departure_date" placeholder = "starting departure date"/>
+        <input type = "date" name = "second_departure_date" placeholder = "ending departure date"/><br>
         <input type = "text" name = "departure_city" placeholder = "departure city" pattern = "{1,20}"/>
         <input type = "text" name = "arrival_city" placeholder = "arrival city" pattern = "{1,20}"/></br>
         <input type = "text" name = "departure_airport" placeholder = "departure airport" pattern = "{1,20}"/>
         <input type = "text" name = "arrival_airport" placeholder = "arrival airport" pattern = "{1,20}"/></br>
         <input type = "submit" value = "Search" /></br>
     </form>
-<br><a href = "/Home"><button>Back to Home</button></a>
+<a href = "/Home"><button>Back to Home</button></a>
 
 </body>
+
 </html>
