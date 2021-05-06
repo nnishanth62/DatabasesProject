@@ -330,7 +330,7 @@ def registerAuthCustomer():
         first_name = request.form['first_name']
         last_name = request.form['last_name']
         cust_password = md5(request.form['password'].encode()).hexdigest()
-        phone = "".join(request.form['phone'].split('-'))
+        phone = request.form['phone']
         address = request.form['address'].split(', ')
         ind = address[0].find(' ')
         num_name = address[0]
@@ -537,7 +537,7 @@ def CustPurchaseFlightAuth():
         get = "SELECT * from purchasable_tickets where flight_num = %s and airline_name = %s and  tickets_sold < capacity" \
               "and departure_time = %s and departure_date = %s"
         cursor = conn.cursor()
-        cursor.execute(get, (request.form['flight_num'], request.form['airline_name'], request.form['departure_time'],
+        cursor.execute(get, (request.form['flight_num'], request.form['airline_name'], request.form['departure_time']+':00',
                              request.form['departure_date']))
         flight = cursor.fetchone()
         if flight:
@@ -701,7 +701,7 @@ def BookingAgentPurchaseAuth():
         get = "SELECT * from purchasable_tickets where flight_num = %s and airline_name = %s and  tickets_sold < capacity " \
               "and departure_time = %s and departure_date = %s"
         cursor = conn.cursor()
-        cursor.execute(get, (request.form['flight_num'], request.form['airline_name'], request.form['departure_time'],
+        cursor.execute(get, (request.form['flight_num'], request.form['airline_name'], request.form['departure_time']+':00',
                              request.form['departure_date']))
         flight = cursor.fetchone()
         if flight:
