@@ -31,6 +31,7 @@
 	<th>Departure City</th>
 	<th>Arrival Airport</th>
 	<th>Arrival City</th>
+	<th>Flight Status</th>
 
 {% for line in data %}
 	<tr>
@@ -40,9 +41,10 @@
 		<td>{{line['arrival_date']}}</td>
 		<td>{{line['arrival_time']}}</td>
 		<td>{{line['departure_airport_name']}}</td>
-		<td>{{line['dep_port.city']}}</td>
+		<td>{{line['city']}}</td>
         <td>{{line['arrival_airport_name']}}</td>
 		<td>{{line['ar_port.city']}}</td>
+		<td>{{line['flight_status']}}</td>
 	</tr>
 {% endfor %}
 </table>

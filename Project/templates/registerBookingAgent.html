@@ -15,7 +15,7 @@
   {% endif %}
 {% endwith %}
     <form action = "/registerAuthBookingAgent" method = "POST">
-        <input type = "email" name = "email" placeholder = "email" pattern = ".@[a-zA-Z0-9]{1,}\.[A-Za-z]{2,}$" maxlength = "30" required/></br>
+        <input type = "email" name = "email" placeholder = "email" maxlength = "30" required/></br>
         <input type = "text" name = "booking_agent_id" placeholder = "booking agent ID" minlength = "6" maxlength="6" required/></br>
         <input type = "password" name = "password" placeholder = "password" maxlength="20" required/></br>
         <input type = "submit" value = "Register" required/></br>

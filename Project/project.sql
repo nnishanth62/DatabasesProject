@@ -52,7 +52,7 @@ CREATE TABLE `airline_staff` (
   `username` varchar(20) NOT NULL,
   `first_name` varchar(20) DEFAULT NULL,
   `last_name` varchar(20) DEFAULT NULL,
-  `staff_password` varchar(30) DEFAULT NULL,
+  `staff_password` varchar(32) DEFAULT NULL,
   `date_of_birth` date DEFAULT NULL,
   `airline_name` varchar(20) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
@@ -120,7 +120,7 @@ INSERT INTO `airport` (`name`, `city`) VALUES
 CREATE TABLE `booking_agent` (
   `email` varchar(30) NOT NULL,
   `booking_agent_id` char(6) DEFAULT NULL,
-  `agent_password` varchar(30) DEFAULT NULL,
+  `agent_password` varchar(32) DEFAULT NULL,
   `commission` decimal(11,2) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
@@ -143,7 +143,7 @@ CREATE TABLE `customer` (
   `email` varchar(30) NOT NULL,
   `first_name` varchar(20) DEFAULT NULL,
   `last_name` varchar(20) DEFAULT NULL,
-  `cust_password` varchar(30) DEFAULT NULL,
+  `cust_password` varchar(32) DEFAULT NULL,
   `phone_number` varchar(13) DEFAULT NULL,
   `address_building_number` int(11) DEFAULT NULL,
   `address_street` varchar(20) DEFAULT NULL,
@@ -224,10 +224,10 @@ INSERT INTO `purchase` (`ticket_id`, `customer_email`, `booking_agent_email`, `p
 -- --------------------------------------------------------
 
 --
--- Stand-in structure for view `purchaseable_tickets`
+-- Stand-in structure for view `purchasable_tickets`
 -- (See below for the actual view)
 --
-CREATE TABLE `purchaseable_tickets` (
+CREATE TABLE `purchasable_tickets` (
 `airline_name` varchar(20)
 ,`flight_num` char(6)
 ,`departure_date` date
@@ -307,11 +307,11 @@ INSERT INTO `ticket` (`ticket_id`, `flight_airline_name`, `flight_num`, `sold_pr
 -- --------------------------------------------------------
 
 --
--- Structure for view `purchaseable_tickets`
+-- Structure for view `purchasable_tickets`
 --
-DROP TABLE IF EXISTS `purchaseable_tickets`;
+DROP TABLE IF EXISTS `purchasable_tickets`;
 
-CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `purchaseable_tickets`  AS SELECT `flight`.`airline_name` AS `airline_name`, `flight`.`flight_num` AS `flight_num`, `flight`.`departure_date` AS `departure_date`, `flight`.`departure_time` AS `departure_time`, `flight`.`arrival_date` AS `arrival_date`, `flight`.`arrival_time` AS `arrival_time`, `flight`.`departure_airport_name` AS `departure_airport_name`, `dep_port`.`city` AS `departure_city`, `flight`.`arrival_airport_name` AS `arrival_airport_name`, `ar_port`.`city` AS `arrival_city`, `flight`.`price` AS `price` FROM (((`flight` join `airport` `dep_port`) join `airport` `ar_port`) join `airplane` on(`flight`.`airline_name` = `airplane`.`airline_name`)) WHERE `flight`.`tickets_sold` < `airplane`.`seats` AND `dep_port`.`name` = `flight`.`departure_airport_name` AND `ar_port`.`name` = `flight`.`arrival_airport_name` AND `airplane`.`ID` = `flight`.`airplane_id` ;
+CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `purchasable_tickets`  AS SELECT `flight`.`airline_name` AS `airline_name`, `flight`.`flight_num` AS `flight_num`, `flight`.`departure_date` AS `departure_date`, `flight`.`departure_time` AS `departure_time`, `flight`.`arrival_date` AS `arrival_date`, `flight`.`arrival_time` AS `arrival_time`, `flight`.`departure_airport_name` AS `departure_airport_name`, `dep_port`.`city` AS `departure_city`, `flight`.`arrival_airport_name` AS `arrival_airport_name`, `ar_port`.`city` AS `arrival_city`, `flight`.`price` AS `price` FROM (((`flight` join `airport` `dep_port`) join `airport` `ar_port`) join `airplane` on(`flight`.`airline_name` = `airplane`.`airline_name`)) WHERE `flight`.`tickets_sold` < `airplane`.`seats` AND `dep_port`.`name` = `flight`.`departure_airport_name` AND `ar_port`.`name` = `flight`.`arrival_airport_name` AND `airplane`.`ID` = `flight`.`airplane_id` ;
 
 --
 -- Indexes for dumped tables

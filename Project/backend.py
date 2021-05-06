@@ -1,5 +1,7 @@
-from flask import Flask, render_template, request, session, url_for, redirect, flash
+from flask import Flask, render_template, request, session, redirect, flash
 import pymysql
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import secrets
 from hashlib import md5
@@ -13,7 +15,7 @@ app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0
 conn = pymysql.connect(host='localhost',
                        user='root',
                        password='',
-                       db='project',
+                       db='dbproject',
                        charset='utf8mb4',
                        cursorclass=pymysql.cursors.DictCursor)
 
@@ -25,29 +27,28 @@ def gen_id(table, airline_name=None):
     cursor = conn.cursor()
     if not airline_name:
         if table == 'ticket':
-            data = None
-            while not data:
+            data = True
+            while data:
                 table_id = secrets.token_urlsafe(5)
                 query = "SELECT * FROM ticket WHERE ticket_id = %s"
                 cursor.execute(query, table_id)
                 data = cursor.fetchone()
         if table == 'airplane':
-            data = None
-            while not data:
+            data = True
+            while data:
                 table_id = secrets.token_urlsafe(5)
                 query = "SELECT * FROM airplane WHERE ID = %s"
                 cursor.execute(query, table_id)
                 data = cursor.fetchone()
     else:
-        data = None
-        while not data:
+        data = True
+        while data:
             table_id = secrets.token_urlsafe(6)
             query = "SELECT * FROM flight WHERE flight_num = %s AND airline_name = %s"
-            cursor.execute(query, table_id, airline_name)
+            cursor.execute(query, (table_id, airline_name))
             data = cursor.fetchone()
     cursor.close()
-    return table_id
-
+    return table_id[:6]
 
 # GRAPHS
 def graphs(plot, start_date=None, end_date=None):
@@ -56,23 +57,25 @@ def graphs(plot, start_date=None, end_date=None):
         if VerifyCustomer():
             if start_date and end_date:
                 query = "SELECT * FROM ticket natural join purchase natural join flight WHERE purchase_date > %s and purchase_date < %s AND customer_email = %s"
-                cursor.execute(query, start_date, end_date, session['email'])
+                cursor.execute(query, (start_date, end_date, session['email']))
             else:
                 if start_date:
-                    query = "SELECT * FROM ticket natural join purchase natural join flight WHERE purchase_date > %s AND customer_email = %s"
-                    cursor.execute(query, start_date, session['email'])
+                    query = "SELECT * FROM ticket natural join purchase natural join flight WHERE purchase_date > %s AND " \
+                            "customer_email = %s AND flight_airline_name = airline_name"
+                    cursor.execute(query, (start_date, session['email']))
                 else:
-                    query = "SELECT * FROM ticket natural join purchase natural join flight WHERE purchase_date > DATEADD(month, -6, GETDATE()) AND customer_email = %s"
+                    query = "SELECT * FROM ticket natural join purchase natural join flight WHERE purchase_date > DATE_SUB(CURDATE(), INTERVAL 6 MONTH) AND customer_email = %s" \
+                            "AND flight_airline_name = airline_name"
                     cursor.execute(query, session['email'])
             data = cursor.fetchall()
             graphdata = {}
             for line in data:
-                curr_month = line['purchase_date'][:-3]
+                curr_month = line['purchase_date'].strftime('%Y-%m')
                 curr_price = int(line['sold_price'])
                 graphdata[curr_month] = graphdata[curr_month] + curr_price if curr_month in graphdata else curr_price
             plt.bar(list(graphdata.keys()), list(graphdata.values()))
             plt.title('Amount of Money Spent per Month')
-            plt.savefig("/templates/graphs/CustSpendingGraph")
+            plt.savefig("templates/graphs/CustSpendingGraph.png")
         else:
             return redirect('/logout')
     elif plot == "BookingAgent":
@@ -88,9 +91,9 @@ def graphs(plot, start_date=None, end_date=None):
             y = [int(line['commission']) for line in data]
             plt.bar(x, y)
             plt.title('Top 5 Customers by Commission')
-            plt.savefig("/templates/graphs/BookingAgentCommissionGraph")
+            plt.savefig("templates/graphs/BookingAgentCommissionGraph.png")
             query = "SElECT COUNT(ticket_id) as ticket_sales, customer.email, first_name, last_name FROM ticket NATURAL JOIN purchase, customer WHERE customer.email = customer_email" \
-                    " AND booking_agent_email = %s GROUP BY customer.email ORDER BY commission DESC"
+                    " AND booking_agent_email = %s GROUP BY customer.email ORDER BY ticket_sales DESC"
             cursor.execute(query, session['email'])
             data = cursor.fetchall()
             if len(data) > 5:
@@ -99,7 +102,7 @@ def graphs(plot, start_date=None, end_date=None):
             y = [int(line['ticket_sales']) for line in data]
             plt.bar(x, y)
             plt.title('Top 5 Customers by Tickets Sold')
-            plt.savefig("/templates/graphs/BookingAgentTicketGraph")
+            plt.savefig("templates/graphs/BookingAgentTicketGraph.png")
             cursor.close()
         else:
             return redirect('/logout')
@@ -107,32 +110,32 @@ def graphs(plot, start_date=None, end_date=None):
         if VerifyAirlineStaff():
             if start_date and end_date:
                 query = "SELECT * FROM ticket NATURAL JOIN purchase WHERE flight_airline_name = %s AND purchase_date >= %s AND purchase_date <= %s"
-                cursor.execute(query, get_airline(), start_date, end_date)
+                cursor.execute(query, (get_airline(), start_date, end_date))
             else:
                 if start_date:
                     query = "SELECT * FROM ticket NATURAL JOIN purchase WHERE flight_airline_name = %s AND purchase_date >= %s"
-                    cursor.execute(query, get_airline(), start_date)
+                    cursor.execute(query, (get_airline(), start_date))
                 else:
                     query = "SELECT * FROM ticket NATURAL JOIN purchase WHERE flight_airline_name = %s AND purchase_date >=" \
-                            " DATEADD(year, -1, GETDATE()) AND customer_email = %s"
+                            " DATE_SUB(CURDATE(), INTERVAL 1 YEAR)"
                     cursor.execute(query, get_airline())
             ticket_count = cursor.fetchall()
             graphdata = {}
             for line in ticket_count:
-                curr_month = line['purchase_date'][:-3]
+                curr_month = line['purchase_date'].strftime('%Y-%m')
                 graphdata[curr_month] = graphdata[curr_month] + 1 if curr_month in graphdata else 1
             plt.bar(list(graphdata.keys()), list(graphdata.values()))
             plt.title('Ticket Sales for %s by Month' % get_airline())
-            plt.savefig('/templates/graphs/AirlineStaffTicketCount')
+            plt.savefig('templates/graphs/AirlineStaffTicketCount.png')
             # PIE CHART FOR BA VS CUST PURCHASES
-            query = "SELECT COUNT(ticket_id) FROM purchase NATURAL JOIN ticket WHERE flight_airline_name = %s AND booking_agent_email {} NULL"
+            query = "SELECT COUNT(ticket_id) as count FROM purchase NATURAL JOIN ticket WHERE flight_airline_name = %s AND booking_agent_email {} NULL"
             cursor.execute(query.format('<>'), get_airline())
-            ba_count = int(cursor.fetchone()[0])
+            ba_count = int(cursor.fetchone()['count'])
             cursor.execute(query.format('='), get_airline())
-            cust_count = int(cursor.fetchone()[0])
+            cust_count = int(cursor.fetchone()['count'])
             plt.pie((ba_count, cust_count), labels=("Booking Agent Sales", "Customer Sales"))
             plt.title('Booking Agent vs Customer Ticket Purchases')
-            plt.savefig('/templates/graph/AirlineStaffBAvCustSales')
+            plt.savefig('templates/graphs/AirlineStaffBAvCustSales.png')
         else:
             return redirect('/logout')
 
@@ -158,11 +161,14 @@ def VerifyCustomer():
     EXAMPLE USE IN CUSTHOME() FUNCTION
     """
     verify = "SELECT * FROM customer WHERE email = %s"
-    cursor = conn.cursor()
-    cursor.execute(verify, session['email'])
-    data = cursor.fetchone()
-    cursor.close()
-    return data
+    try:
+        cursor = conn.cursor()
+        cursor.execute(verify, session['email'])
+        data = cursor.fetchone()
+        cursor.close()
+        return data
+    except:
+        return False
 
 
 def VerifyAirlineStaff():
@@ -170,20 +176,26 @@ def VerifyAirlineStaff():
     almost identical to VerifyCustomer(), should be used identically in airline staff functions
     """
     verify = "SELECT * FROM airline_staff WHERE username = %s"
-    cursor = conn.cursor()
-    cursor.execute(verify, session['email'])
-    data = cursor.fetchone()
-    cursor.close()
-    return data
+    try:
+        cursor = conn.cursor()
+        cursor.execute(verify, session['email'])
+        data = cursor.fetchone()
+        cursor.close()
+        return data
+    except:
+        return False
 
 
 def VerifyBookingAgent():
     verify = "SELECT * FROM booking_agent WHERE email = %s"
-    cursor = conn.cursor()
-    cursor.execute(verify, session['email'])
-    data = cursor.fetchone()
-    cursor.close()
-    return data
+    try:
+        cursor = conn.cursor()
+        cursor.execute(verify, session['email'])
+        data = cursor.fetchone()
+        cursor.close()
+        return data
+    except:
+        return False
 
 
 def format_address(address):
@@ -232,17 +244,16 @@ def loginAuthCustomer():
     password = md5(request.form['password'].encode()).hexdigest()
     cursor = conn.cursor()
     query = "SELECT * FROM customer WHERE email = %s and cust_password = %s"
-    cursor.execute(query, email, password)
+    cursor.execute(query, (email, password))
     data = cursor.fetchone()
     cursor.close()
     if data:
         session['email'] = email
-        session['username'] = data[1]
-        graphs("Cust")
+        session['username'] = data['first_name']
         return redirect('/CustHome')
     else:
         flash("INVALID LOGIN")
-        return render_template('loginCustomer.html')
+        return redirect('/loginCustomer')
 
 
 @app.route('/loginAuthBookingAgent', methods=['GET', 'POST'])
@@ -251,14 +262,14 @@ def loginAuthBookingAgent():
     password = md5(request.form['password'].encode()).hexdigest()
     booking_agent_id = request.form['booking_agent_id']
     cursor = conn.cursor()
-    query = "SELECT * FROM booking_agent WHERE email = %s and password = %s and booking_agent_id = %s"
-    cursor.execute(query, email, password, booking_agent_id)
+    query = "SELECT * FROM booking_agent WHERE email = %s and agent_password = %s and booking_agent_id = %s"
+    cursor.execute(query, (email, password, booking_agent_id))
     data = cursor.fetchone()
     cursor.close()
     if data:
         session['email'] = email
-        session['username'] = data[0]
-        return redirect(url_for('/BookingAgentHome'))
+        session['username'] = data['email']
+        return redirect('/BookingAgentHome')
     else:
         flash("INVALID LOGIN!")
         return render_template('loginBookingAgent.html')
@@ -269,24 +280,17 @@ def loginAuthAirlineStaff():
     username = request.form['username']
     password = md5(request.form['password'].encode()).hexdigest()
     cursor = conn.cursor()
-    query = "SELECT * FROM airline_staff WHERE username  = %s and password = %s"
-    cursor.execute(query, username, password)
+    query = "SELECT * FROM airline_staff WHERE username  = %s and staff_password = %s"
+    cursor.execute(query, (username, password))
     data = cursor.fetchone()
     cursor.close()
     if data:
         session['email'] = username
-        session['username'] = data[1]
+        session['username'] = data['first_name']
         return redirect('/AirlineStaffHome')
     else:
         flash("INVALID LOGIN")
         return render_template('loginAirlineStaff.html')
-
-
-# LOGOUT METHOD
-@app.route('/logout')
-def logout():
-    session.pop(session['email'])
-    return redirect('/')
 
 
 # REGISTER METHODS
@@ -328,13 +332,18 @@ def registerAuthCustomer():
         cust_password = md5(request.form['password'].encode()).hexdigest()
         phone = "".join(request.form['phone'].split('-'))
         address = request.form['address'].split(', ')
+        ind = address[0].find(' ')
+        num_name = address[0]
+        address.insert(0, num_name)
+        address[0] = address[0][:ind].strip()
+        address[1] = address[1][ind:].strip()
         passport_no = request.form['passport_number']
         passport_country = request.form['passport_country']
         passport_exp = request.form['passport_expiration']
         dob = request.form['DOB']
         ins = "INSERT INTO customer values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
-        cursor.execute(ins, email, first_name, last_name, cust_password, phone, address[0], address[1], address[2],
-                       address[3], passport_no, passport_country, passport_exp, dob)
+        cursor.execute(ins, (email, first_name, last_name, cust_password, phone, address[0], address[1], address[2],
+                             address[3], passport_no, passport_country, passport_exp, dob))
         conn.commit()
         cursor.close()
         flash("SUCCESSFULLY REGISTERED CUSTOMER")
@@ -359,7 +368,7 @@ def registerAuthAirlineStaff():
         dob = request.form['DOB']
         airline = request.form['airline_name']
         ins = "INSERT INTO airline_staff VALUES(%s, %s, %s, %s, %s, %s)"
-        cursor.execute(ins, username, fname, lname, password, dob, airline)
+        cursor.execute(ins, (username, fname, lname, password, dob, airline))
         conn.commit()
         cursor.close()
         flash("SUCCESSFULLY REGISTERED AIRLINE STAFF")
@@ -382,7 +391,7 @@ def registerAuthBookingAgent():
         agent_id = request.form['booking_agent_id']
         commission = 0
         ins = "INSERT INTO booking_agent VALUES(%s, %s, %s, %s)"
-        cursor.execute(ins, email, agent_id, password, commission)
+        cursor.execute(ins, (email, agent_id, password, commission))
         conn.commit()
         cursor.close()
         flash("SUCCESSFULLY REGISTERED AIRLINE STAFF")
@@ -391,8 +400,11 @@ def registerAuthBookingAgent():
 
 @app.route('/logout')
 def logout():
-    session.pop('username')
-    session.pop('email')
+    try:
+        session.pop('username')
+        session.pop('email')
+    except KeyError:
+        pass
     return redirect('/')
 
 
@@ -405,9 +417,7 @@ def publicviewSearch():
 
 @app.route('/publicviewDisplay', methods=["GET", "POST"])
 def publicviewDisplay():
-    date_time = datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S').split()
-    query = "SELECT airline_name, flight_num, departure_date, departure_time, arrival_date, arrival_time, departure_airport_name, dep_port.city, arrival_airport_name, ar_port.city FROM flight, " \
-            "airport as dep_port, airport as ar_port WHERE dep_port.name = departure_airport_name and ar_port.name = arrival_airport_name and departure_date > %s and departure_time > %s"
+    query = "SELECT * FROM purchasable_tickets WHERE departure_date >= CURDATE() AND tickets_sold < capacity"
     query_addition = []
     departure_airport = request.form.get('departure_airport')
     arrival_airport = request.form.get('arrival_airport')
@@ -425,13 +435,13 @@ def publicviewDisplay():
     if arrival_date != '':
         query_addition.append("arrival_date = '%s'" % arrival_date)
     if departure_city != '':
-        query_addition.append("dep_port.city = '%s'" % departure_city)
+        query_addition.append("departure_city = '%s'" % departure_city)
     if arrival_city != '':
-        query_addition.append("ar_port.city = '%s'" % arrival_city)
+        query_addition.append("arrival_city = '%s'" % arrival_city)
     if query_addition:
         query += " and " + " and ".join(query_addition)
     cursor = conn.cursor()
-    cursor.execute(query, date_time[0], date_time[1])
+    cursor.execute(query)
     data = cursor.fetchall()
     cursor.close()
     return render_template('publicviewDisplay.html', data=data)
@@ -444,29 +454,29 @@ def Home():
     elif VerifyBookingAgent():
         return redirect('/BookingAgentHome')
     elif VerifyCustomer():
-        return redirect('/CustomerHome')
+        return redirect('/CustHome')
     else:
         return redirect('/')
+
 
 # CUSTOMER VIEWS
 @app.route('/CustHome')
 def CustHome():
     if VerifyCustomer():  # if looking for their name has a result, send them to home
+        graphs("Cust")
         current_date = datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S').split()[0]
         name = session['username']
         return render_template("CustHome.html", current_date=current_date, name=name)
     else:  # otherwise we just kill their session
         return redirect('/logout')
 
-
 @app.route('/CustViewMyFlights')
 def CustViewMyFlights():
     if VerifyCustomer():
-        date_time = datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S').split()
-        query = "SELECT * FROM flight, purchase, ticket WHERE flight.flight_status = 'upcoming' AND flight.flight_num =" \
-                " ticket.flight_num AND ticket.ticket_id = purchase.ticket_id AND purchase.customer_email = %s and departure_date > %s and departure_time > %s"
+        query = "SELECT * FROM purchase natural join ticket natural join purchasable_tickets WHERE airline_name = flight_airline_name " \
+                "AND purchase.customer_email = %s and departure_date >= CURDATE()"
         cursor = conn.cursor()
-        cursor.execute(query, session['email'], date_time[0], date_time[1])
+        cursor.execute(query, (session['email']))
         data = cursor.fetchall()
         cursor.close()
         return render_template('CustViewMyFlights.html', data=data)
@@ -474,7 +484,7 @@ def CustViewMyFlights():
         return redirect('/logout')
 
 
-@app.route('CustSearchForFlights')
+@app.route('/CustSearchForFlights')
 def CustSearchForFlights():
     if VerifyCustomer():
         return render_template("CustSearchForFlights.html")
@@ -485,8 +495,7 @@ def CustSearchForFlights():
 @app.route('/CustSearchForFlightsDisplay', methods=["GET", "POST"])
 def CustSearchForFlightsDisplay():
     if VerifyCustomer():
-        date_time = datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S').split()
-        query = "SELECT * FROM purchasable_tickets WHERE departure_date > %s and departure_time > %s"
+        query = "SELECT * FROM purchasable_tickets WHERE tickets_sold < capacity"
         query_addition = []
         departure_airport = request.form['departure_airport']
         arrival_airport = request.form['arrival_airport']
@@ -510,38 +519,45 @@ def CustSearchForFlightsDisplay():
         if query_addition:
             query += " and " + " and ".join(query_addition)
         cursor = conn.cursor()
-        cursor.execute(query, date_time[0], date_time[1])
+        cursor.execute(query)
         data = cursor.fetchall()
         cursor.close()
+        for line in data:
+            start_price = float(line['price'])
+            line['price'] = start_price if line['capacity']*.7 > line['tickets_sold'] else start_price*1.2
+            line['price'] = str(line['price'])
         return render_template('CustSearchForFlightsDisplay.html', data=data)
     else:
         return redirect('/logout')
 
 
-@app.route('/CustPurchaseFlightsAuth', methods=["GET", "POST"])
+@app.route('/CustPurchaseFlightAuth', methods=["GET", "POST"])
 def CustPurchaseFlightAuth():
     if VerifyCustomer():
-        get = "SELECT * from purchasable_tickets where flight_num = %s and airline_name = %s " \
+        get = "SELECT * from purchasable_tickets where flight_num = %s and airline_name = %s and  tickets_sold < capacity" \
               "and departure_time = %s and departure_date = %s"
         cursor = conn.cursor()
-        cursor.execute(get, request.form['flight_num'], request.form['airline_name'], request.form['departure_time'],
-                       request.form['departure_date'])
+        cursor.execute(get, (request.form['flight_num'], request.form['airline_name'], request.form['departure_time'],
+                             request.form['departure_date']))
         flight = cursor.fetchone()
         if flight:
+            price = float(flight['price']) if float(flight['capacity'])*.7 > float(flight['tickets_sold']) else float(flight['price'])*1.2
             date_time = datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S').split()
             ticket_id = gen_id('ticket')
             # first gonna create the ticket
             ins_ticket = "INSERT into ticket VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)"
-            cursor.execute(ins_ticket, ticket_id, flight[1], flight[0], request.form['price'], session['email'],
-                           request.form['debit_credit'], request.form['card_no'], request.form['cardholder'],
-                           request.form['card_exp'])
+            cursor.execute(ins_ticket, (ticket_id, flight['airline_name'], flight['flight_num'], price, session['email'],
+                                        request.form['debit_credit'], request.form['card_no'],
+                                        request.form['cardholder'],
+                                        request.form['card_exp']))
             # then i wanna create the purchase record (NULL value is booking agent email)
             ins_purchase = "INSERT into purchase VALUES (%s, %s, NULL, %s, %s)"
-            cursor.execute(ins_purchase, ticket_id, session['email'], date_time[0], date_time[1])
+            cursor.execute(ins_purchase, (ticket_id, session['email'], date_time[0], date_time[1]))
             # then i wanna update the seats sold on the flight
-            update = "UPDATE flight SET tickets_sold = tickets_sold + 1 WHERE flight_num = %s"
-            cursor.execute(update, flight[0])
-            cursor.commit()
+            update = "UPDATE flight SET tickets_sold = tickets_sold + 1 WHERE flight_num = %s AND airline_name = %s AND departure_date = %s" \
+                     "AND departure_time = %s"
+            cursor.execute(update, (flight['flight_num'], flight['airline_name'], flight['departure_date'], flight['departure_time']))
+            conn.commit()
             flash('PURCHASE SUCCESSFUL')
             return redirect('/CustHome')
         else:
@@ -558,8 +574,9 @@ def CustGiveRatings():
     if VerifyCustomer():
         date_time = datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S').split()
         cursor = conn.cursor()
-        query = "SELECT * FROM flight, customer WHERE flight.customer_email = customer.email AND customer_email = %s and flight.arrival_date < %s"
-        cursor.execute(query, session['email'], date_time[0])
+        query = "SELECT * FROM flight natural join ticket natural join customer WHERE ticket.customer_email = customer.email" \
+                " AND customer_email = %s and flight.arrival_date < %s AND flight.airline_name = ticket.flight_airline_name"
+        cursor.execute(query, (session['email'], date_time[0]))
         allflights = cursor.fetchall()
         query = "SELECT * FROM ratings WHERE email = %s"
         cursor.execute(query, session['email'])
@@ -578,13 +595,14 @@ def CustRatingAuth():
         query = "SELECT * FROM flight natural join ticket LEFT OUTER JOIN ratings WHERE flight.airline_name" \
                 " = ticket.flight_airline_name AND ticket.customer_email <> ratings.email and ticket.customer_email = %s" \
                 "flight.arrival_date < %s AND flight_num = %s AND airline_name = %s"
-        cursor.execute(query, session['email'], date_time[0], request.form['flight_num'], request.form['airline_name'])
+        cursor.execute(query,
+                       (session['email'], date_time[0], request.form['flight_num'], request.form['airline_name']))
         data = cursor.fetchall()
         if data:
             ins = "INSERT INTO ratings VALUES(%s, %s, %s, %s, %s)"
-            cursor.execute(ins, session['email'], request.form['flight_num'], request.form['airline_name'],
-                           request.form['comments'], request.form['rating'])
-            cursor.commit()
+            cursor.execute(ins, (session['email'], request.form['flight_num'], request.form['airline_name'],
+                                 request.form['comments'], request.form['rating']))
+            conn.commit()
             flash('Rating Successfully Posted')
             return redirect('/CustHome')
         else:
@@ -599,15 +617,18 @@ def CustRatingAuth():
 @app.route('/BookingAgentHome', methods=["GET", "POST"])
 def BookingAgentHome():
     if VerifyBookingAgent():
+        graphs("BookingAgent")
         days = request.form.get('days', 30)
         name = session['username']
-        query = "SELECT * FROM ticket natural join purchase WHERE booking_agent_email = %s AND purchase_date > DATEADD(day, -%s, GETDATE())"
+        query = "SELECT * FROM ticket natural join purchase WHERE booking_agent_email = %s AND purchase_date > DATE_SUB(CURDATE(), INTERVAL %s DAY)"
         cursor = conn.cursor()
-        cursor.execute(query, name, days)
+        cursor.execute(query, (name, days))
         data = cursor.fetchall()
         cursor.close()
-        commission = sum([int(line['commission']) for line in data]) * 0.1
-        return render_template("BookingAgentHome.html", commission=commission, tickets=len(data))
+        commission = sum([int(line['sold_price']) for line in data]) * 0.1
+        tickets = len(data)
+        avg = 0 if tickets == 0 else round(commission/tickets, 2)
+        return render_template("BookingAgentHome.html", commission=commission, tickets=tickets, avg=avg)
     else:
         return redirect('/logout')
 
@@ -615,23 +636,22 @@ def BookingAgentHome():
 @app.route('/BookingAgentViewFlights')
 def BookingAgentViewFlights():
     if VerifyBookingAgent():
-        date_time = datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S').split()
-        query = "SELECT * FROM flight, purchase, booking_agent, ticket, customer WHERE flight.flight_num = ticket.flight_num " \
+        query = "SELECT * FROM flight, purchase, booking_agent, ticket, customer, airport as dep_port, airport as ar_port WHERE flight.flight_num = ticket.flight_num " \
                 "AND ticket.ticket_id = purchase.ticket_id AND purchase.booking_agent_email = booking_agent.email " \
-                "AND flight.airline_name = ticket.flight_airline_name AND customer.email = purchase.customer_email" \
-                "AND booking_agent.email = %s AND departure_date > %s and " \
-                "departure_time > %s"
+                "AND flight.airline_name = ticket.flight_airline_name AND customer.email = purchase.customer_email " \
+                "AND booking_agent.email = %s AND departure_date > CURDATE() AND ar_port.name = flight.arrival_airport_name " \
+                "AND dep_port.name = flight.departure_airport_name"
         cursor = conn.cursor()
-        cursor.execute(query, session['email'], date_time[0], date_time[1])
+        cursor.execute(query, (session['email']))
         data = cursor.fetchall()
-
+        print(data)
         cursor.close()
         return render_template('BookingAgentViewFlights.html', data=data)
     else:
         return redirect('/logout')
 
 
-@app.route('BookingAgentSearchForFlights')
+@app.route('/BookingAgentSearchForFlights')
 def BookingAgentSearchForFlights():
     if VerifyBookingAgent():
         return render_template("BookingAgentSearchForFlights.html")
@@ -642,9 +662,7 @@ def BookingAgentSearchForFlights():
 @app.route('/BookingAgentSearchForFlightsDisplay', methods=["GET", "POST"])
 def BookingAgentSearchForFlightsDisplay():
     if VerifyBookingAgent():
-        date_time = datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S').split()
-        query = "SELECT * FROM flight, purchase, ticket WHERE purchase.customer_email = %s" \
-                "AND purchase.ticket_id = ticket.ticket_id AND ticket.flight_num = flight.flight_num"
+        query = "SELECT * FROM purchasable_tickets WHERE tickets_sold < capacity"
         query_addition = []
         departure_airport = request.form['departure_airport']
         arrival_airport = request.form['arrival_airport']
@@ -667,8 +685,10 @@ def BookingAgentSearchForFlightsDisplay():
         if query_addition:
             query += " and " + " and ".join(query_addition)
         cursor = conn.cursor()
-        cursor.execute(query, date_time[0], date_time[1])
+        print(query)
+        cursor.execute(query)
         data = cursor.fetchall()
+        print(data)
         cursor.close()
         return render_template('BookingAgentSearchForFlightsDisplay.html', data=data)
     else:
@@ -678,29 +698,31 @@ def BookingAgentSearchForFlightsDisplay():
 @app.route('/BookingAgentPurchaseAuth', methods=["GET", "POST"])
 def BookingAgentPurchaseAuth():
     if VerifyBookingAgent():
-        get = "SELECT * from purchasable_tickets where flight_num = %s and airline_name = %s " \
+        get = "SELECT * from purchasable_tickets where flight_num = %s and airline_name = %s and  tickets_sold < capacity " \
               "and departure_time = %s and departure_date = %s"
         cursor = conn.cursor()
-        cursor.execute(get, request.form['flight_num'], request.form['airline_name'], request.form['departure_time'],
-                       request.form['departure_date'])
+        cursor.execute(get, (request.form['flight_num'], request.form['airline_name'], request.form['departure_time'],
+                             request.form['departure_date']))
         flight = cursor.fetchone()
         if flight:
             date_time = datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S').split()
             ticket_id = gen_id('ticket')
             # first gonna create the ticket
             ins_ticket = "INSERT into ticket VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)"
-            cursor.execute(ins_ticket, ticket_id, flight[1], flight[0], request.form['price'], request.form['email'],
-                           request.form['debit_credit'], request.form['card_no'], request.form['cardholder'],
-                           request.form['card_exp'])
+            cursor.execute(ins_ticket, (ticket_id, flight['airline_name'], flight['flight_num'], request.form['price'], request.form['email'],
+                                        request.form['debit_credit'], request.form['card_no'],
+                                        request.form['cardholder'],
+                                        request.form['card_exp']))
             # then i wanna create the purchase record
             ins_purchase = "INSERT into purchase VALUES (%s, %s, %s, %s, %s)"
-            cursor.execute(ins_purchase, ticket_id, request.form['email'], session['email'], date_time[0], date_time[1])
+            cursor.execute(ins_purchase,
+                           (ticket_id, request.form['email'], session['email'], date_time[0], date_time[1]))
             # then i wanna update the seats sold on the flight
             update = "UPDATE flight SET tickets_sold = tickets_sold + 1 WHERE flight_num = %s"
-            cursor.execute(update, flight[0])
+            cursor.execute(update, flight['flight_num'])
             commission_update = "UPDATE booking_agent SET commission = commission + %s * 0.10"
             cursor.execute(commission_update, request.form['price'])
-            cursor.commit()
+            conn.commit()
             cursor.close()
             return redirect('/BookingAgentHome')
         flash('TICKET FAILED TO PURCHASE: FLIGHT NOT FOUND')
@@ -718,7 +740,7 @@ def get_airline():
     cursor.execute(query, session['email'])
     data = cursor.fetchone()
     cursor.close()
-    return data[5]
+    return data['airline_name']
 
 
 @app.route('/AirlineStaffHome')
@@ -740,14 +762,17 @@ def AirlineStaffViewFlights():
 @app.route('/AirlineStaffViewFlightsDisplay', methods=['GET', 'POST'])
 def AirlineStaffViewFlightsDisplay():
     if VerifyAirlineStaff():
-        date_time = datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S').split()
-        query = "SELECT airline_name, flight_num, departure_date, departure_time, arrival_date, arrival_time, departure_airport_name, dep_port.city, arrival_airport_name, ar_port.city FROM flight, " \
-                "airport as dep_port, airport as ar_port WHERE dep_port.name = departure_airport_name and ar_port.name = arrival_airport_name AND departure_date >= %s AND departure_date <= %s"
+        query = "SELECT flight_status, airline_name, flight_num, departure_date, departure_time, arrival_date, arrival_time, " \
+                "departure_airport_name, dep_port.city, arrival_airport_name, ar_port.city FROM flight, " \
+                "airport as dep_port, airport as ar_port WHERE dep_port.name = departure_airport_name and ar_port.name = " \
+                "arrival_airport_name AND departure_date >= {} AND departure_date <= {} AND airline_name = %s"
         query_addition = []
         departure_airport = request.form.get('departure_airport')
         arrival_airport = request.form.get('arrival_airport')
-        first_departure_date = request.form.get('first_departure_date', date_time[0])
-        second_departure_date = request.form.get('second_departure_date', "DATEADD(day, 30, '%s')" % date_time[0])
+        first_departure_date = request.form.get('first_departure_date')
+        first_departure_date = first_departure_date if first_departure_date else "CURDATE()"
+        second_departure_date = request.form.get('second_departure_date')
+        second_departure_date = second_departure_date if second_departure_date else "DATE_ADD(CURDATE(), INTERVAL 30 DAY)"
         departure_city = request.form.get('departure_city')
         arrival_city = request.form.get('arrival_city')
         ### NEED TO REWORK THIS SO WE USE EXECUTE() SQL INJECTION PROTECTION
@@ -759,10 +784,12 @@ def AirlineStaffViewFlightsDisplay():
             query_addition.append("dep_port.city = '%s'" % departure_city)
         if arrival_city != '':
             query_addition.append("ar_port.city = '%s'" % arrival_city)
-        query += " AND " + " AND ".join(query_addition)
+        query = query + " AND " + " AND ".join(query_addition) if query_addition else query
         cursor = conn.cursor()
-        cursor.execute(query, first_departure_date, second_departure_date)
+        cursor.execute(query.format(first_departure_date, second_departure_date), (get_airline()))
+        print((query.format(first_departure_date, second_departure_date), (get_airline())))
         data = cursor.fetchall()
+        print(data)
         cursor.close()
         return render_template('AirlineStaffViewFlightsDisplay.html', data=data)
     else:
@@ -774,13 +801,23 @@ def AirlineStaffCreateFlights():
     if VerifyAirlineStaff():
         airline = get_airline()
         cursor = conn.cursor()
-        insert = "INSERT INTO flight VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s)"
-        cursor.execute(insert, gen_id('plane', airline), airline, request.form['airplane_id'],
-                       request.form['departure_time'], request.form['departure_date'],
-                       request.form['departure_airport_name'],
-                       request.form['arrival_time'], request.form['arrival_date'], request.form['arrival_airport_name'],
-                       request.form['price'], 'on-time')
-        cursor.commit()
+        airport_exists = "SELECT * FROM airport WHERE name = %s"
+        cursor.execute(airport_exists, request.form['departure_airport_name'])
+        d_airport_exists = cursor.fetchall()
+        airport_exists = "SELECT * FROM airport WHERE name = %s"
+        cursor.execute(airport_exists, request.form['arrival_airport_name'])
+        a_airport_exists = cursor.fetchall()
+        plane_exists = "SELECT * FROM airplane where ID = %s AND airline_name = %s"
+        cursor.execute(plane_exists, (request.form['airplane_id'], get_airline()))
+        if d_airport_exists and a_airport_exists and plane_exists:
+            insert = "INSERT INTO flight VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)"
+            cursor.execute(insert, (gen_id('plane', airline), airline, request.form['airplane_id'],
+                                    request.form['departure_time']+":00", request.form['departure_date'],
+                                    request.form['departure_airport_name'],
+                                    request.form['arrival_time']+":00", request.form['arrival_date'],
+                                    request.form['arrival_airport_name'],
+                                    request.form['price'], 'on-time', 0))
+        conn.commit()
         cursor.close()
         flash("Flight Created!")
         return redirect('/AirlineStaffHome')
@@ -793,12 +830,12 @@ def AirlineStaffChangeFlightStatus():
     if VerifyAirlineStaff():
         query = "SELECT * FROM flight WHERE airline_name = %s AND flight_num = %s"
         cursor = conn.cursor()
-        cursor.execute(query, get_airline(), request.form['flight_num'])
+        cursor.execute(query, (get_airline(), request.form['flight_num']))
         data = cursor.fetchall()
         if data:
             query = "UPDATE flight SET flight.flight_status = %s WHERE flight_num = %s AND airline_name = %s"
-            cursor.execute(query, request.form['flight_status'], request.form['flight_num'], get_airline())
-            cursor.commit()
+            cursor.execute(query, (request.form['flight_status'], request.form['flight_num'], get_airline()))
+            conn.commit()
             cursor.close()
             flash("Flight Status Changed")
             return redirect('/AirlineStaffHome')
@@ -828,8 +865,8 @@ def AirlineStaffAddAirplane():
     if VerifyAirlineStaff():
         cursor = conn.cursor()
         insert = "INSERT INTO airplane VALUES(%s, %s, %s)"
-        cursor.execute(insert, gen_id('airplane'), get_airline(), request.form['seats'])
-        cursor.commit()
+        cursor.execute(insert, (gen_id('airplane'), get_airline(), request.form['seats']))
+        conn.commit()
         cursor.close()
         flash('Airplane Successfully Added!')
         return redirect('/AirlineStaffHome')
@@ -842,8 +879,8 @@ def AirlineStaffAddAirport():
     if VerifyAirlineStaff():
         cursor = conn.cursor()
         insert = "INSERT INTO airport VALUES(%s,%s)"
-        cursor.execute(insert, request.form['name'], request.form['city'])
-        cursor.commit()
+        cursor.execute(insert, (request.form['name'], request.form['city']))
+        conn.commit()
         cursor.close()
         flash("Airport Successfully Added!")
         return redirect('/AirlineStaffHome')
@@ -866,7 +903,7 @@ def AirlineStaffViewTopDestinations():
         return redirect('/logout')
 
 
-@app.route('AirlineStaffStats', methods=['GET', 'POST'])
+@app.route('/AirlineStaffStats', methods=['GET', 'POST'])
 def AirlineStaffStats():
     if VerifyAirlineStaff():
         cursor = conn.cursor()
@@ -874,16 +911,16 @@ def AirlineStaffStats():
                           "WHERE airline_name = %s GROUP BY flight_num"
         cursor.execute(get_avg_ratings, get_airline())
         avg_ratings = cursor.fetchall()
-        get_top_agents = "SELECT COUNT(ticket_id) as tickets_sold, booking_agent_email FROM purchases WHERE " \
+        get_top_agents = "SELECT COUNT(ticket_id) as tickets_sold, booking_agent_email FROM purchase WHERE " \
                          "booking_agent_email <> NULL GROUP BY booking_agent_email ORDER BY tickets_sold DESC"
         cursor.execute(get_top_agents)
         top_agents = cursor.fetchall()
         top_agents = top_agents[:5] if len(top_agents) > 5 else top_agents
-        get_top_dest = "SELECT COUNT(ticket_id) AS trips_made, arrival_city FROM flight, airport, ticket NATURAL JOIN purchase WHERE " \
+        get_top_dest = "SELECT COUNT(ticket_id) AS trips_made, airport.city as arrival_city FROM flight, airport, ticket NATURAL JOIN purchase WHERE " \
                        "ticket.flight_num = flight.flight_num AND ticket.flight_airline_name = flight.airline_name " \
-                       "AND flight.arrival_airport = airport.name AND purchase.purchase_date > DATEADD({}, GETDATE())"
-        dest_three_months = get_top_dest.format("month, -3")
-        dest_year = get_top_dest.format("year, -1")
+                       "AND flight.arrival_airport_name = airport.name AND purchase.purchase_date > DATE_SUB(CURDATE(), INTERVAL {})"
+        dest_three_months = get_top_dest.format("3 MONTH")
+        dest_year = get_top_dest.format("1 YEAR")
         cursor.execute(dest_three_months)
         dest_three_months = cursor.fetchall()
         cursor.execute(dest_year)
@@ -892,24 +929,26 @@ def AirlineStaffStats():
         end_date = request.form.get('end_date')
         graphs('AirlineStaff', start_date, end_date)
         current_date = datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S').split()[0]
-        return render_template('AirlineStaffStats.html', airline=get_airline(), avg_ratings=avg_ratings, current_date=current_date,
+        return render_template('AirlineStaffStats.html', airline=get_airline(), avg_ratings=avg_ratings,
+                               current_date=current_date,
                                top_agents=top_agents, dest_three_months=dest_three_months, dest_year=dest_year)
     else:
         return redirect('/logout')
 
 
-@app.route('AirlineStaffReview', methods=['GET', 'POST'])
+@app.route('/AirlineStaffReview', methods=['GET', 'POST'])
 def AirlineStaffReview():
     if VerifyAirlineStaff():
         cursor = conn.cursor()
         check_flight = "SELECT * FROM flight WHERE flight_num = %s and airline_name = %s"
-        cursor.execute(check_flight, request.form.get('flight_num'), get_airline())
+        cursor.execute(check_flight, (request.form.get('flight_num'), get_airline()))
         data = cursor.fetchone()
         if data:
             get_ratings = "SELECT * FROM ratings NATURAL JOIN customer WHERE airline_name = %s and flight_num = %s"
-            cursor.execute(get_ratings, get_airline(), request.form.get('flight_num'))
+            cursor.execute(get_ratings, (get_airline(), request.form.get('flight_num')))
             ratings = cursor.fetchall()
-            return render_template("AirlineStaffReview.html", ratings=ratings, flight_num=request.form.get('flight_num'))
+            return render_template("AirlineStaffReview.html", ratings=ratings,
+                                   flight_num=request.form.get('flight_num'))
         flash("ERROR: Flight specified does not exist")
         return redirect('/AirlineStaffStats')
     return redirect('/logout')

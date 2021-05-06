@@ -29,15 +29,13 @@ Your previous flights:
 	<th>Arrival Date</th>
 	<th>Arrival Time</th>
 	<th>Departure Airport</th>
-	<th>Departure City</th>
 	<th>Arrival Airport</th>
-	<th>Arrival City</th>
 	<th>Sale Price</th>
 
 {% for line in allflights %}
 	<tr>
-		<td>{{line['flight.airline_name']}}</td>
-		<td>{{line['flight.flight_num']}}</td>
+		<td>{{line['airline_name']}}</td>
+		<td>{{line['flight_num']}}</td>
 		<td>{{line['departure_date']}}</td>
 		<td>{{line['departure_time']}}</td>
 		<td>{{line['arrival_date']}}</td>

@@ -35,7 +35,7 @@
 	<th>Price</th>
 
 {% for line in data %}
-	<% price = line['price'] if line['capacity']*.7 > line['tickets_sold'] else line['price']*1.2 %>
+
 	<tr>
 		<td>{{line['airline_name']}}</td>
 		<td>{{line['flight_num']}}</td>
@@ -44,10 +44,10 @@
 		<td>{{line['arrival_date']}}</td>
 		<td>{{line['arrival_time']}}</td>
 		<td>{{line['departure_airport_name']}}</td>
-		<td>{{line['city']}}</td>
+		<td>{{line['departure_city']}}</td>
         <td>{{line['arrival_airport_name']}}</td>
-		<td>{{line['ar_port.city']}}</td>
-		<td>{{price}}</td>
+		<td>{{line['arrival_city']}}</td>
+		<td>{{line['price']}}</td>
 	</tr>
 {% endfor %}
 </table>
@@ -62,11 +62,8 @@
         <input type = "text" required name = "card_no" placeholder = "card number" pattern = "[0-9]{16,19}"/></br>
         <input type = "text" required name = "cardholder" placeholder = "billing name" pattern = "{1,30}"/>
         <input type = "date" required name = "card_exp" placeholder = "card exp date"/></br>
-		<input type = "hidden" required name = "price" value = {{price}}>
 		<input type = "submit" value = "Purchase" /></br>
     </form>
-<a href = "/CustHome"><button>Back to Home</button></a>
-
 <br><a href = "/Home"><button>Back to Home</button></a>
 
 </body>
