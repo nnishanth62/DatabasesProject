@@ -14,7 +14,7 @@ app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0
 
 conn = pymysql.connect(host='localhost',
                        user='root',
-                       password='root',
+                       password='', # I didn't need a password, so that's strange
                        db='dbproject',
                        charset='utf8mb4',
                        cursorclass=pymysql.cursors.DictCursor)
@@ -160,42 +160,48 @@ def VerifyCustomer():
     :return data: tuple of query result, can use "if VerifyCustomer():" to check whether or not it's empty.
     EXAMPLE USE IN CUSTHOME() FUNCTION
     """
-    verify = "SELECT * FROM customer WHERE email = %s"
-    try:
-        cursor = conn.cursor()
-        cursor.execute(verify, session['email'])
-        data = cursor.fetchone()
-        cursor.close()
-        return data
-    except:
-        return False
+    if session.get('type') == 'Cust':
+        verify = "SELECT * FROM customer WHERE email = %s"
+        try:
+            cursor = conn.cursor()
+            cursor.execute(verify, session['email'])
+            data = cursor.fetchone()
+            cursor.close()
+            return len(data) > 0
+        except:
+            return False
+    return False
 
 
 def VerifyAirlineStaff():
     """
     almost identical to VerifyCustomer(), should be used identically in airline staff functions
     """
-    verify = "SELECT * FROM airline_staff WHERE username = %s"
-    try:
-        cursor = conn.cursor()
-        cursor.execute(verify, session['email'])
-        data = cursor.fetchone()
-        cursor.close()
-        return data
-    except:
-        return False
+    if session.get('type') == 'AirlineStaff':
+        verify = "SELECT * FROM airline_staff WHERE username = %s"
+        try:
+            cursor = conn.cursor()
+            cursor.execute(verify, session['email'])
+            data = cursor.fetchone()
+            cursor.close()
+            return len(data) > 0
+        except:
+            return False
+    return False
 
 
 def VerifyBookingAgent():
-    verify = "SELECT * FROM booking_agent WHERE email = %s"
-    try:
-        cursor = conn.cursor()
-        cursor.execute(verify, session['email'])
-        data = cursor.fetchone()
-        cursor.close()
-        return data
-    except:
-        return False
+    if session.get('type') == 'BookingAgent':
+        verify = "SELECT * FROM booking_agent WHERE email = %s"
+        try:
+            cursor = conn.cursor()
+            cursor.execute(verify, session['email'])
+            data = cursor.fetchone()
+            cursor.close()
+            return len(data) > 0
+        except:
+            return False
+    return False
 
 
 def format_address(address):
@@ -250,10 +256,11 @@ def loginAuthCustomer():
     if data:
         session['email'] = email
         session['username'] = data['first_name']
+        session['type'] = 'Cust'
         return redirect('/CustHome')
     else:
         flash("INVALID LOGIN!")
-        return render_template('loginCustomer.html')
+        return redirect('/loginCustomer')
 
 
 @app.route('/loginAuthBookingAgent', methods=['GET', 'POST'])
@@ -269,6 +276,7 @@ def loginAuthBookingAgent():
     if data:
         session['email'] = email
         session['username'] = data['email']
+        session['type'] = 'BookingAgent'
         return redirect('/BookingAgentHome')
     else:
         flash("INVALID LOGIN!")
@@ -287,6 +295,7 @@ def loginAuthAirlineStaff():
     if data:
         session['email'] = username
         session['username'] = data['first_name']
+        session['type'] = 'AirlineStaff'
         return redirect('/AirlineStaffHome')
     else:
         flash("INVALID LOGIN")
@@ -401,8 +410,9 @@ def registerAuthBookingAgent():
 @app.route('/logout')
 def logout():
     try:
-        session.pop('username')
-        session.pop('email')
+        session.pop('username', None)
+        session.pop('email', None)
+        session.pop('type', None)
     except KeyError:
         pass
     return redirect('/')
