@@ -14,7 +14,7 @@ app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0
 
 conn = pymysql.connect(host='localhost',
                        user='root',
-                       password='',
+                       password='root',
                        db='dbproject',
                        charset='utf8mb4',
                        cursorclass=pymysql.cursors.DictCursor)
@@ -48,7 +48,7 @@ def gen_id(table, airline_name=None):
             cursor.execute(query, (table_id, airline_name))
             data = cursor.fetchone()
     cursor.close()
-    return table_id[:6]
+    return table_id[:7]
 
 # GRAPHS
 def graphs(plot, start_date=None, end_date=None):
@@ -252,8 +252,8 @@ def loginAuthCustomer():
         session['username'] = data['first_name']
         return redirect('/CustHome')
     else:
-        flash("INVALID LOGIN")
-        return redirect('/loginCustomer')
+        flash("INVALID LOGIN!")
+        return render_template('loginCustomer.html')
 
 
 @app.route('/loginAuthBookingAgent', methods=['GET', 'POST'])
@@ -347,7 +347,7 @@ def registerAuthCustomer():
         conn.commit()
         cursor.close()
         flash("SUCCESSFULLY REGISTERED CUSTOMER")
-        return redirect("/")
+        return redirect('/')
 
 
 @app.route('/registerAuthAirlineStaff', methods=["GET", "POST"])
@@ -513,9 +513,9 @@ def CustSearchForFlightsDisplay():
         if arrival_date != '':
             query_addition.append("arrival_date = '%s'" % arrival_date)
         if departure_city != '':
-            query_addition.append("dep_port.city = '%s'" % departure_city)
+            query_addition.append("departure_city = '%s'" % departure_city)
         if arrival_city != '':
-            query_addition.append("ar_port.city = '%s'" % arrival_city)
+            query_addition.append("arrival_city = '%s'" % arrival_city)
         if query_addition:
             query += " and " + " and ".join(query_addition)
         cursor = conn.cursor()
@@ -593,7 +593,7 @@ def CustRatingAuth():
         date_time = datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S').split()
         cursor = conn.cursor()
         query = "SELECT * FROM flight natural join ticket LEFT OUTER JOIN ratings WHERE flight.airline_name" \
-                " = ticket.flight_airline_name AND ticket.customer_email <> ratings.email and ticket.customer_email = %s" \
+                " = ticket.flight_airline_name AND ticket.customer_email != ratings.email and ticket.customer_email = %s" \
                 "flight.arrival_date < %s AND flight_num = %s AND airline_name = %s"
         cursor.execute(query,
                        (session['email'], date_time[0], request.form['flight_num'], request.form['airline_name']))
@@ -679,9 +679,9 @@ def BookingAgentSearchForFlightsDisplay():
         if arrival_date != '':
             query_addition.append("arrival_date = '%s'" % arrival_date)
         if departure_city != '':
-            query_addition.append("dep_port.city = '%s'" % departure_city)
+            query_addition.append("departure_city = '%s'" % departure_city)
         if arrival_city != '':
-            query_addition.append("ar_port.city = '%s'" % arrival_city)
+            query_addition.append("arrival_city = '%s'" % arrival_city)
         if query_addition:
             query += " and " + " and ".join(query_addition)
         cursor = conn.cursor()
