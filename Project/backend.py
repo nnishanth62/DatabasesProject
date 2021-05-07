@@ -14,7 +14,7 @@ app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0
 
 conn = pymysql.connect(host='localhost',
                        user='root',
-                       password='', # I didn't need a password, so that's strange
+                       password='root', # I didn't need a password, so that's strange
                        db='dbproject',
                        charset='utf8mb4',
                        cursorclass=pymysql.cursors.DictCursor)
@@ -547,7 +547,7 @@ def CustPurchaseFlightAuth():
         get = "SELECT * from purchasable_tickets where flight_num = %s and airline_name = %s and  tickets_sold < capacity" \
               "and departure_time = %s and departure_date = %s"
         cursor = conn.cursor()
-        cursor.execute(get, (request.form['flight_num'], request.form['airline_name'], request.form['departure_time']+':00',
+        cursor.execute(get, (request.form['flight_num'], request.form['airline_name'], request.form['departure_time'], #deleted :00
                              request.form['departure_date']))
         flight = cursor.fetchone()
         if flight:
