@@ -790,8 +790,9 @@ def BookingAgentPurchaseAuth():
             cursor.execute(ins_purchase,
                            (ticket_id, request.form['email'], session['email'], date_time[0], date_time[1]))
             # then update the seats sold on the flight
-            update = "UPDATE flight SET tickets_sold = tickets_sold + 1 WHERE flight_num = %s"
-            cursor.execute(update, flight['flight_num'])
+            update = "UPDATE flight SET tickets_sold = tickets_sold + 1 WHERE flight_num = %s AND airline_name = %s AND departure_date = %s " \
+                     "AND departure_time = %s"
+            cursor.execute(update, flight['flight_num'], flight['airline_name'], flight['departure_date'], flight['departure_time'])
             commission_update = "UPDATE booking_agent SET commission = commission + %s * 0.10"
             cursor.execute(commission_update, request.form['price'])
             conn.commit()
