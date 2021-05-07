@@ -66,7 +66,8 @@ def graphs(plot, start_date=None, end_date=None):
             # Want spending graph, default should be past 6 months
             if start_date and end_date:
                 # get every ticket in purchase range for current customer
-                query = "SELECT * FROM ticket natural join purchase natural join flight WHERE purchase_date >= %s and purchase_date <= %s AND customer_email = %s " \
+                query = "SELECT * FROM ticket natural join purchase natural join flight WHERE purchase_date >= %s and " \
+                        "purchase_date <= %s AND customer_email = %s " \
                         "ORDER BY purchase_date ASC"
                 cursor.execute(query, (start_date, end_date, session['email']))
             else:
@@ -97,7 +98,7 @@ def graphs(plot, start_date=None, end_date=None):
     elif plot == "BookingAgent":
         if VerifyBookingAgent():
             # Top customers by commission, last year
-            query = "SElECT SUM(sold_price)*0.1 as commission, first_name, last_name, customer.email FROM ticket NATURAL JOIN purchase, customer WHERE customer.email = customer_email " \
+            query = "SELECT SUM(sold_price)*0.1 as commission, first_name, last_name, customer.email FROM ticket NATURAL JOIN purchase, customer WHERE customer.email = customer_email " \
                     " AND purchase_date >= DATE_SUB(CURDATE(), INTERVAL 1 YEAR) AND booking_agent_email = %s GROUP BY customer.email ORDER BY commission DESC"
             cursor = conn.cursor()
             cursor.execute(query, session['email'])
@@ -111,7 +112,7 @@ def graphs(plot, start_date=None, end_date=None):
             plt.savefig("static/BookingAgentCommissionGraph.png")
             plt.clf()
             # top customers by ticket sales, last 6 mo
-            query = "SElECT COUNT(ticket_id) as ticket_sales, customer.email, first_name, last_name FROM ticket NATURAL JOIN purchase, customer WHERE customer.email = customer_email " \
+            query = "SELECT COUNT(ticket_id) as ticket_sales, customer.email, first_name, last_name FROM ticket NATURAL JOIN purchase, customer WHERE customer.email = customer_email " \
                     " AND purchase_date >= DATE_SUB(CURDATE(), INTERVAL 6 MONTH) AND booking_agent_email = %s GROUP BY customer.email ORDER BY ticket_sales DESC"
             cursor.execute(query, session['email'])
             data = cursor.fetchall()
@@ -155,14 +156,25 @@ def graphs(plot, start_date=None, end_date=None):
             plt.savefig('static/AirlineStaffTicketCount.png')
             plt.clf()
             # PIE CHART FOR BA VS CUST PURCHASES
-            query = "SELECT COUNT(ticket_id) as count FROM purchase NATURAL JOIN ticket WHERE flight_airline_name = %s AND booking_agent_email {} NULL"
+            query = "SELECT COUNT(ticket_id) as count FROM purchase NATURAL JOIN ticket WHERE flight_airline_name = %s AND booking_agent_email {} NULL " \
+                    "AND purchase_date >= DATE_SUB(CURDATE(), INTERVAL 1 YEAR)"
             cursor.execute(query.format('IS NOT'), get_airline())
             ba_count = int(cursor.fetchone()['count'])
             cursor.execute(query.format('IS'), get_airline())
             cust_count = int(cursor.fetchone()['count'])
             plt.pie((ba_count, cust_count), labels=("Booking Agent Sales", "Customer Sales"), autopct='%1.1f%%')
-            plt.title('Booking Agent vs Customer Ticket Purchases')
-            plt.savefig('static/AirlineStaffBAvCustSales.png')
+            plt.title('Booking Agent vs Customer Ticket Purchases in past year')
+            plt.savefig('static/AirlineStaffBAvCustSalesYear.png')
+            plt.clf()
+            query = "SELECT COUNT(ticket_id) as count FROM purchase NATURAL JOIN ticket WHERE flight_airline_name = %s AND booking_agent_email {} NULL " \
+                    "AND purchase_date >= DATE_SUB(CURDATE(), INTERVAL 1 MONTH)"
+            cursor.execute(query.format('IS NOT'), get_airline())
+            ba_count = int(cursor.fetchone()['count'])
+            cursor.execute(query.format('IS'), get_airline())
+            cust_count = int(cursor.fetchone()['count'])
+            plt.pie((ba_count, cust_count), labels=("Booking Agent Sales", "Customer Sales"), autopct='%1.1f%%')
+            plt.title('Booking Agent vs Customer Ticket Purchases in past month')
+            plt.savefig('static/AirlineStaffBAvCustSalesMonth.png')
             plt.clf()
         else:
             return redirect('/logout')
@@ -434,7 +446,7 @@ def publicview():
 @app.route('/publicviewDisplay', methods=["GET", "POST"])
 def publicviewDisplay():
     query = "SELECT * FROM purchasable_tickets WHERE departure_date >= CURDATE() AND tickets_sold < capacity"
-    # select future flights where there are still tickets to be sold
+    # SELECT future flights where there are still tickets to be sold
     query_addition = []
     parameters = []
     departure_airport = request.form.get('departure_airport')
