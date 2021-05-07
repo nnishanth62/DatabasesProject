@@ -14,7 +14,7 @@
     </ul>
   {% endif %}
 {% endwith %}
-<h1>Filter future flights: (no required parameters)</h1>
+<h1>Filter {{airline}} flights:</h1>
     <form action = "/AirlineStaffViewFlightsDisplay" method = "POST">
         Enter range of departure dates (default is following 30 days):
         <input type = "date" name = "first_departure_date" placeholder = "starting departure date"/>

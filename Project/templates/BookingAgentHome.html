@@ -18,8 +18,8 @@
     <h1>Welcome back {{name}}!</h1>
     <p>
         <a href = "/BookingAgentSearchForFlights"><button>Search For Flights!</button></a>
-        <a href = "/BookingAgentViewFlights"><button>View Previous Sales!</button></a>
-        <a href = "/publicviewSearch"><button>View Public Info!</button></a><br>
+        <a href = "/BookingAgentViewFlights"><button>View Your Sales!</button></a>
+        <a href = "/publicview"><button>View Public Info!</button></a><br>
         <a href = "/logout"><button>Log Out</button></a><br>
         You made ${{commission}} from {{tickets}} tickets in the past {{days}} days for an average of ${{avg}} made per ticket.<br>
         <form action="/BookingAgentHome" method="POST">
@@ -27,8 +27,8 @@
         <input type = "number" id="days" name = "days" placeholder = "# days" min="0" step="1" value="30"/>
         <input type = "submit" value = "Submit" /><br>
         </form>
-                <img src="/graphs/BookingAgentCommissionGraph.png" alt="Top 5 customers by commission"><br>
-                <img src="/graphs/BookingAgentTicketGraph.png" alt="Top 5 customers by ticket sales">
+                <img src="{{url_for('static', filename='BookingAgentCommissionGraph.png')}}" alt="Top 5 customers by commission"><br>
+                <img src="{{url_for('static', filename='BookingAgentTicketGraph.png')}}" alt="Top 5 customers by ticket sales">
     </p>
 </center>
 <br><a href = "/Home"><button>Back to Home</button></a>

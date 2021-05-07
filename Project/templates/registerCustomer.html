@@ -20,11 +20,13 @@
         <input type = "text" name = "first_name" placeholder = "first name" pattern = "[A-Za-z'-]{1,20}" required/>
         <input type = "text" name = "last_name" placeholder = "last name" pattern = "[A-Za-z'-]{1,20}" required/></br>
 	<input type = "tel" name = "phone" placeholder = "###-###-####" pattern = "[0-9]{10}|[0-9]{3}-[0-9]{3}-[0-9]{4}" required/></br>
-        <input type = "date" name = "DOB" placeholder = "DOB" pattern = "[1-31]{1,2}-[1-12]{1,2}-[1900-2021]{4}" required></br>
+        <label for="DOB">DOB</label>
+        <input type = "date" name = "DOB" id = "DOB" pattern = "[1-31]{1,2}-[1-12]{1,2}-[1900-2021]{4}" required></br>
         <input type = "text" name = "address" placeholder = "# Street, City, State" pattern = "[0-9]{1,6} [0-9 A-Za-z]{1,20}, [A-Z a-z]{1,20}, [A-Z a-z]{1,20}" required/></br>
         <input type = "text" name = "passport_number" placeholder = "passport number" pattern = "[0-9]{9}" required/>
         <input type = "text" name = "passport_country" placeholder = "passport country" pattern = "[A-Z a-z]{1,20}" required/>
-        <input type = "date" name = "passport_expiration" placeholder = "passport exp." pattern = "[1-31]{1,2}-[1-12]{1,2}-[1900-2021]{4}" required/></br>
+        <label for="passport exp.">passport exp.</label>
+        <input type = "date" name = "passport_expiration" id = "passport exp." pattern = "[1-31]{1,2}-[1-12]{1,2}-[1900-2021]{4}" required/></br>
         <input type = "email" name = "email" placeholder = "email" maxlength = "30" required/></br>
         <input type = "password" name = "password" placeholder = "password" required/></br>
         <input type = "submit" value = "Register" /></br>
